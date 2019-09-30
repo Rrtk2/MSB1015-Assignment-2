@@ -17,7 +17,7 @@
 #     
 #   Inputs
 #	  
-
+rm(list=ls())
 #-----------------------------------------------------------------------------------------------------#
 #		Block 01		(Install &) Load packages
 #-----------------------------------------------------------------------------------------------------#
@@ -27,7 +27,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages <-
-  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","neuralnet","randomForest",
+  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","neuralnet","randomForest","gplots","limma","ggfortify",
 	"crayon")
 	
 for (i in requiredpackages) {
@@ -81,7 +81,7 @@ MAE = function(yact, ypred){
 #-----------------------------------------------------------------------------------------------------#
 endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
-query = 'SELECT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
   ?comp wdt:P31/wdt:P279* wd:Q41581 ;
         p:P2102 [
           ps:P2102 ?bp ;
@@ -122,6 +122,36 @@ dataObjBACKUP = dataObj
 # Finalize data structure
 dataObj = data.frame(dataObjBACKUP$compLabel, dataObjBACKUP$bp, dataObjBACKUP$CC)
 names(dataObj) = c("Comp","bp","CC")
+#-----------------------------------------------------------------------------------------------------#
+#							TEST FILTER TO GET LINEAR ALKANES
+#-----------------------------------------------------------------------------------------------------#
+
+dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
+
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		OUTLIER TESTING
+#-----------------------------------------------------------------------------------------------------#
+# hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
+dataObj$bp[dataObj$Comp=="hexatriacontane"] = 770.15
+
+# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k
+dataObj$bp[dataObj$Comp=="Dooctacontane"] = 958.05
+
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		DATA VISZ
+#-----------------------------------------------------------------------------------------------------#
+# Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
+CClength_crude = nchar(gsub(pattern = "\\)",replacement = "",x = gsub(pattern = "\\(",replacement = "",x = dataObj$CC)))
+plotCClength = CClength_crude[order(CClength_crude)]
+BPplot = dataObj$bp[order(CClength_crude)]
+
+# Should result in a exponential function-like graph
+plot(plotCClength,BPplot)
+
+
+
+
+
 #-----------------------------------------------------------------------------------------------------#
 # 		Block 03		rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
 #-----------------------------------------------------------------------------------------------------#
@@ -165,30 +195,80 @@ for( i in 1:length(dataObj$CC)){
 
 }
 
+# Make backup from data, easy for testing (resetting)
 mydataBACKUP = mydata
 mydata = mydataBACKUP
+
+# Remove names
 descs = mydata[,-1]
 
-if(T){
+
+#-----------------------------------------------------------------------------------------------------#
+#							Latent variable selection (correlation)
+#-----------------------------------------------------------------------------------------------------#
+# Remove NAs n stuff
+descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
+descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
+
+# Correlate the descriptors with the boiling point; if these are linked, they should add some info
+corMatrix = cor(descs , dataObj$bp)
+corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
+
+# select first 15 components:
+componentNames = rownames(corMatrix)[1:15]
+descs = descs[,match(colnames(descs), x = componentNames)]
+
+
+
+# Old method, keepin this inside for further reference
+if(F){
+	mydata = mydataBACKUP
+
+	descs = mydata[,-1]
+
+
 	# crude way to extract 'important' features based on correlation
 	descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
 	descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
-	r2 <- which(cor(descs)^2 > .9, arr.ind=TRUE)
+	r2 <- which(cor(descs)^2 > .9, arr.ind=TRUE) # when keeping this high, the prediction improves
 	r2 <- r2[ r2[,1] > r2[,2] , ]
 	descs <- descs[, -unique(r2[,2])]
 }
 
+# should contain nAtomLAC; the amount of c atoms
+if(!exists("descs$nAtomLAC")){
+
+	descs = cbind(descs, mydata$nAtomLAC)
+	names(descs)[dim(descs)[2]] = "n"
+	}else{
+	names(descs)[names(descs)=="descs$nAtomLAC"] = "n"
+}
+
+# add parameters from paper!
+
+#descs$w = 1/6*(descs$n-1)*(descs$n)*(descs$n+1)
+#descs$p = descs$n - 3
+# the folowing screw up the analysis:
+#descs$A = 98/descs$n^2 * descs$w
+#descs$B = 5.5*descs$p
+
+# store resulting input file in my_data; as it is used everywhere
 my_data = descs
+
 #-----------------------------------------------------------------------------
 #Finish prepare data
 #-----------------------------------------------------------------------------
-#my_data = my_data[,-1]  # Remove ID
+# Add and define the 'to be predicted' column
 n_col <- ncol(my_data)
 BoilPoint = n_col+1
 my_data[,BoilPoint] = dataObj$bp
 names(my_data)[BoilPoint] = 'BoilPoint'
 
 
+
+#-----------------------------------------------------------------------------------------------------#
+#							MACHINE LEARINGN
+#-----------------------------------------------------------------------------------------------------#
 
 #-----------------------------------------------------------------------------------------------------#
 # 				Data subsetting; Train; Test
@@ -208,7 +288,7 @@ data.test = as.data.frame(data.test)
 
 # NOTE: annotations are within location [,32007]
 data.train[,BoilPoint] = data.train[,BoilPoint]
-data.test[,BoilPoint] =data.test[,BoilPoint]
+data.test[,BoilPoint] = data.test[,BoilPoint]
 
 #remove nas
 data.train=data.train[!is.na(data.train[,1]),]
@@ -220,60 +300,60 @@ xNN = data.train[,-(BoilPoint)]
 yNN = data.train[,BoilPoint]
 
 dat = data.frame(xNN, y = yNN)
-yactual = data.test[,BoilPoint]
-
-
-
-#-----------------------------------------------------------------------------------------------------#
-#							Linear Regression
-#-----------------------------------------------------------------------------------------------------#
-
-# S3 method for formula
-GLMfit = glm(y ~ ., dat,family = "gaussian")
-
-#so put data.predicted and actual data.test together
-ypredGLM = predict(GLMfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
-
-# Root mean squared error
-RMSE(yactual, ypredGLM)
-#	Results in: 36.76
-
-# Mean absolute error
-MAE(yactual, ypredGLM)
-#	Results in: 22.11
-
-plot(dat$y, predict(GLMfit, xNN),
-     xlab="Observed BP", ylab="Predicted BP",
-     pch=19, xlim=c(100, 700), ylim=c(100, 700))
-abline(0,1, col='red')
-
-# check for under/overfitting
- ypredGLM = predict(GLMfit, as.data.frame(data.train[,-(BoilPoint)]),type="response")
-# Root mean squared error
-RMSE(data.train[,(BoilPoint)], ypredGLM)
-#	Results in: 23.32
-
-# Mean absolute error
-MAE(data.train[,(BoilPoint)], ypredGLM)
-#	Results in: 7.844
+#yactual = data.test[,BoilPoint]
+yactual.test = data.test[,BoilPoint]
+yactual.train = data.train[,BoilPoint]
 
 #-----------------------------------------------------------------------------------------------------#
-#							Linear Regression
+#							PLS MODEL VALIDATION NOT RUNNING ATM!
 #-----------------------------------------------------------------------------------------------------#
+#NOT RUNNING ATM! 
+if(F){
+
+# so the model from the paper https://pubs.acs.org/doi/abs/10.1021/ja01193a005 is:
+# tB = aw + bp + c
+# a = constant
+# b = constant
+# c = constant
+# p = polarity number
+# w = sum of dist; number of carbonatoms to left multiply by remaining right; use all bounds
+
+# resulted formula:  t = 98/n^2 * w + 5.5*p
+# w = 1/6*(n-1)*(n)*(n+1)
+# p = n - 3
+
+# Rephrased formula:  t = A + B
+# A = 98/n^2 * w
+# B = 5.5*p
+# w = 1/6*(n-1)*(n)*(n+1)
+# p = n - 3
 
 
-# S3 method for formula
-PLSfit = plsr(y ~ ., ncomp = 20, data = dat, validation = "LOO")
+datPLS = dat
+datPLS$w = 1/6*(datPLS$n-1)*(datPLS$n)*(datPLS$n+1)
+datPLS$p = datPLS$n - 3
+datPLS$A = 98/datPLS$n^2 * datPLS$w
+datPLS$B = 5.5*datPLS$p
+
+data.testPLS = data.test
+data.testPLS$w = 1/6*(data.test$n-1)*(data.test$n)*(data.test$n+1)
+data.testPLS$p = data.test$n - 3
+data.testPLS$A = 98/data.testPLS$n^2 * data.testPLS$w
+data.testPLS$B = 5.5*data.testPLS$p
+
+# PLS MODEL
+PLSfit = plsr(y ~ A + B, data = datPLS, validation = "LOO")
+
 
 # Select amount of components
 ncomp.onesigma <- selectNcomp(PLSfit, method = "onesigma", plot = TRUE)
 ncomp.permut <- selectNcomp(PLSfit, method = "randomization", plot = TRUE)
 
 # If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = dat, validation = "LOO")
+PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = datPLS, validation = "LOO")
 
 #so put data.predicted and actual data.test together
-ypredPLS = predict(PLSfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
+ypredPLS = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type="response")
 
 # Root mean squared error
 RMSE(yactual, ypredPLS)
@@ -283,6 +363,105 @@ RMSE(yactual, ypredPLS)
 MAE(yactual, ypredPLS)
 #	Results in: 39.25
 
+}
+
+#-----------------------------------------------------------------------------------------------------#
+#							Linear Regression (exponential)
+#-----------------------------------------------------------------------------------------------------#
+
+# Glm! uses the 15 components 
+GLMfit = glm(y ~ ., dat,family = Gamma(link="log"))
+
+#so put data.predicted and actual data.test together
+ypredGLM.test = predict(GLMfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
+
+
+# Root mean squared error
+RMSE(yactual.test, ypredGLM.test)
+#	Results in: 36.76
+
+# Mean absolute error
+MAE(yactual.test, ypredGLM.test)
+#	Results in: 22.11
+
+plot(yactual.test, ypredGLM.test,
+     xlab="Observed BP test set", ylab="Predicted BP test set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
+
+### Train set; over/underfitting ###
+ypredGLM.train = predict(GLMfit, as.data.frame(data.train[,-(BoilPoint)]),type="response")
+yactual.train = data.train[,BoilPoint]
+
+# Root mean squared error
+RMSE(data.train[,(BoilPoint)], ypredGLM.train)
+#	Results in: 23.32
+
+# Mean absolute error
+MAE(data.train[,(BoilPoint)], ypredGLM.train)
+#	Results in: 7.844
+
+plot(yactual.train, ypredGLM.train,
+     xlab="Observed BP train set", ylab="Predicted BP train set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
+#-----------------------------------------------------------------------------------------------------#
+#							Linear Regression
+#-----------------------------------------------------------------------------------------------------#
+
+
+# S3 method for formula
+PLSfit = plsr(y ~ ., data = dat,family = Gamma(link="log"), validation = "LOO")
+
+# Select amount of components
+ncomp.onesigma <- selectNcomp(PLSfit, method = "onesigma", plot = TRUE)
+ncomp.permut <- selectNcomp(PLSfit, method = "randomization", plot = TRUE)
+
+# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
+PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = dat, validation = "LOO")
+
+#so put data.predicted and actual data.test together
+ypredPLS.test = predict(PLSfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
+
+# Root mean squared error
+RMSE(yactual.test, ypredPLS.test)
+#	Results in: 53.59
+
+# Mean absolute error
+MAE(yactual.test, ypredPLS.test)
+#	Results in: 39.25
+
+
+plot(yactual.test, ypredPLS.test[,,dim(ypredPLS.test)[3]],
+     xlab="Observed BP test set", ylab="Predicted BP test set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
+### Train set; over/underfitting ###
+
+#so put data.predicted and actual data.test together
+ypredPLS.train = predict(PLSfit, as.data.frame(data.train[,-(BoilPoint)]),type="response")
+
+# Root mean squared error
+RMSE(yactual.train, ypredPLS.train)
+#	Results in: 53.59
+
+# Mean absolute error
+MAE(yactual.train, ypredPLS.train)
+#	Results in: 39.25
+
+
+plot(yactual.train, ypredPLS.train[,,dim(ypredPLS.train)[3]],
+     xlab="Observed BP train set", ylab="Predicted BP train set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
 #-----------------------------------------------------------------------------------------------------#
 # 										RF
 #-----------------------------------------------------------------------------------------------------#
@@ -291,16 +470,33 @@ MAE(yactual, ypredPLS)
 prot.rf <- randomForest(y ~ ., importance=TRUE, proximity=TRUE,data=dat, ntree=200)
 
 # after building the random forest, now we apply it on the test dataset
-ypredRF <- predict(prot.rf, data.test[,-(BoilPoint)])
+ypredRF.test <- predict(prot.rf, data.test[,-(BoilPoint)])
 
 
 # Root mean squared error
-RMSE(yactual, ypredRF)
+RMSE(yactual.test, ypredRF.test)
 #	Results in: 20.26
 
 # Mean absolute error
-MAE(yactual, ypredRF)
+MAE(yactual.test, ypredRF.test)
 #	Results in: 7.63
+
+
+
+
+# after building the random forest, now we apply it on the test dataset
+ypredRF.train <- predict(prot.rf, data.train[,-(BoilPoint)])
+
+
+# Root mean squared error
+RMSE(yactual.train, ypredRF.train)
+#	Results in: 20.26
+
+# Mean absolute error
+MAE(yactual.train, ypredRF.train)
+#	Results in: 7.63
+
+
 
 
 
