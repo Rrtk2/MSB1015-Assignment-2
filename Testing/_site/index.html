@@ -12,7 +12,7 @@
 
 
 
-<title>Untitled</title>
+<title>Prediction of boiling points using WikiData and Machine learning techniques</title>
 
 <script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -272,7 +272,16 @@ $(document).ready(function () {
     <div id="navbar" class="navbar-collapse collapse">
       <ul class="nav navbar-nav">
         <li>
-  <a href="page1.html">Home</a>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="version.html">Used packages</a>
+</li>
+<li>
+  <a href="raw.html">Code</a>
+</li>
+<li>
+  <a href="about.html">About</a>
 </li>
       </ul>
       <ul class="nav navbar-nav navbar-right">
@@ -286,29 +295,455 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Untitled</h1>
+<h1 class="title toc-ignore">Prediction of boiling points using WikiData and Machine learning techniques</h1>
 
 </div>
 
 
-<div id="r-markdown" class="section level2">
-<h2>R Markdown</h2>
-<p>This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <a href="http://rmarkdown.rstudio.com" class="uri">http://rmarkdown.rstudio.com</a>.</p>
-<p>When you click the <strong>Knit</strong> button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:</p>
-<pre class="r"><code>summary(cars)</code></pre>
-<pre><code>##      speed           dist       
-##  Min.   : 4.0   Min.   :  2.00  
-##  1st Qu.:12.0   1st Qu.: 26.00  
-##  Median :15.0   Median : 36.00  
-##  Mean   :15.4   Mean   : 42.98  
-##  3rd Qu.:19.0   3rd Qu.: 56.00  
-##  Max.   :25.0   Max.   :120.00</code></pre>
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p>This GitHub Page is a final product of assignment 2, requested by the course MSB1015 (Scientific Programming). The goal is to create a GitHub Page (notebook) for the following analysis. The boiling points of alkenes need to be predicted based on data from WikiData; Smiles are used to enrich the data using the rcdk package in R, afterward, machine learning is applied.</p>
 </div>
-<div id="including-plots" class="section level2">
-<h2>Including Plots</h2>
-<p>You can also embed plots, for example:</p>
-<p><img src="index_files/figure-html/pressure-1.png" width="672" /></p>
-<p>Note that the <code>echo = FALSE</code> parameter was added to the code chunk to prevent printing of the R code that generated the plot.</p>
+<div id="workflow" class="section level2">
+<h2>Workflow</h2>
+<p>Data extraction from wikidata (alkene name, smiles, boiling point).</p>
+<p>Data expansion and cleanup (using rcdk).</p>
+<p>Apply machine learing techniques using the expanded data, to predict boiling point (glm, plsr, randomForest).</p>
+<p>Compare results.</p>
+<div id="script-block-1" class="section level4">
+<h4>Script block 1:</h4>
+<pre class="r"><code># Install packages if needed and load, or just load packages
+if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
+  install.packages(&quot;BiocManager&quot;, ask = F)
+
+# Insert all packages in requiredpackages
+requiredpackages &lt;-
+  c(&quot;WikidataQueryServiceR&quot;,&quot;ggplot2&quot;,&quot;rJava&quot;,&quot;rcdk&quot;,&quot;pls&quot;,&quot;e1071&quot;,&quot;neuralnet&quot;,&quot;randomForest&quot;,&quot;gplots&quot;,&quot;limma&quot;,&quot;ggfortify&quot;,
+    &quot;crayon&quot;)
+    
+for (i in requiredpackages) {
+    if (!requireNamespace(i, quietly = TRUE))
+        BiocManager::install(i, ask = F, dependencies = TRUE)
+    require(as.character(i), character.only = TRUE)
+    print(i)
+}</code></pre>
+<pre><code>## [1] &quot;WikidataQueryServiceR&quot;
+## [1] &quot;ggplot2&quot;
+## [1] &quot;rJava&quot;
+## [1] &quot;rcdk&quot;
+## [1] &quot;pls&quot;
+## [1] &quot;e1071&quot;
+## [1] &quot;neuralnet&quot;
+## [1] &quot;randomForest&quot;
+## [1] &quot;gplots&quot;
+## [1] &quot;limma&quot;
+## [1] &quot;ggfortify&quot;
+## [1] &quot;crayon&quot;</code></pre>
+<pre class="r"><code># Set message styles
+Confirm.style &lt;- green 
+Warning.style &lt;- yellow 
+Error.style &lt;- red
+
+
+cat(Warning.style(&quot;Done running block 01\n&quot;))</code></pre>
+<pre><code>## Done running block 01</code></pre>
+<pre class="r"><code>cat(Confirm.style(&quot;Starting...\n&quot;))</code></pre>
+<pre><code>## Starting...</code></pre>
+</div>
+<div id="script-block-2" class="section level4">
+<h4>Script block 2:</h4>
+<pre class="r"><code># General settings
+options(stringsAsFactors    = F)
+Verbose                     = 3     #0-3:   0= no feedback  1= prints results  2=prints results + feedback  3= prints all
+
+# Select 80% for train, 20% for test
+Randomfactor = 0.8
+
+# Setting seed to keep consistent results 
+set.seed(1)
+
+if(Verbose&gt;=3) cat(Warning.style(&quot;Done running block 02a\n&quot;))</code></pre>
+<pre><code>## Done running block 02a</code></pre>
+</div>
+<div id="script-block-3" class="section level4">
+<h4>Script block 3:</h4>
+<pre class="r"><code># Root Mean Squared Error
+RMSE = function(yact, ypred){
+  sqrt(mean((yact - ypred)^2))
+}
+
+# Mean Absolute Error 
+MAE = function(yact, ypred){
+  mean(abs(yact - ypred))
+}</code></pre>
+</div>
+<div id="script-block-4" class="section level4">
+<h4>Script block 4:</h4>
+<pre class="r"><code>endpoint = &quot;https://query.wikidata.org/bigdata/namespace/wdq/sparql&quot;
+
+query = &#39;SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+        p:P2102 [
+          ps:P2102 ?bp ;
+          psv:P2102/wikibase:quantityUnit  ?bpUnit
+        ] .
+        ?comp wdt:P233 ?CC .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language &quot;[AUTO_LANGUAGE],en&quot;. }
+}
+&#39;
+
+dataObj = query_wikidata(query)</code></pre>
+<pre><code>## 131 rows were returned by WDQS</code></pre>
+</div>
+<div id="script-block-5" class="section level4">
+<h4>Script block 5:</h4>
+<pre class="r"><code>#C to Kelvin:
+# 0°C + 273.15 = 273,15K
+idC = which(dataObj$bpUnitLabel==&quot;degree Celsius&quot;)
+for( i in 1:length(idC)){
+dataObj[idC[i],]$bp = (dataObj[idC[i],]$bp + 273.15)
+dataObj[idC[i],]$bpUnitLabel = &quot;kelvin&quot;
+}
+
+#F to Kelvin:
+# (0°F − 32) × 5/9 + 273.15 = 255,372K
+idF = which(dataObj$bpUnitLabel==&quot;degree Fahrenheit&quot;)
+for( i in 1:length(idF)){
+dataObj[idF[i],]$bp= (dataObj[idF[i],]$bp - 32) * (5/9) + 273.15
+dataObj[idF[i],]$bpUnitLabel = &quot;kelvin&quot;
+}
+
+#additional failsafe if other metrics than Celsius and Fahrenheit are added (other metrics are removed)
+dataObj = dataObj[which(dataObj$bpUnitLabel==&quot;kelvin&quot;),]
+
+# Make backup
+dataObjBACKUP = dataObj
+
+# Finalize data structure
+dataObj = data.frame(dataObjBACKUP$compLabel, dataObjBACKUP$bp, dataObjBACKUP$CC)
+names(dataObj) = c(&quot;Comp&quot;,&quot;bp&quot;,&quot;CC&quot;)</code></pre>
+</div>
+<div id="script-block-6" class="section level4">
+<h4>Script block 6:</h4>
+<pre class="r"><code>dataObj = dataObj[-grep(pattern = &quot;\\(&quot;,x = dataObj$CC),]</code></pre>
+</div>
+<div id="script-block-7" class="section level4">
+<h4>Script block 7:</h4>
+<pre class="r"><code># hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
+dataObj$bp[dataObj$Comp==&quot;hexatriacontane&quot;] = 770.15
+
+# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k
+dataObj$bp[dataObj$Comp==&quot;Dooctacontane&quot;] = 958.05</code></pre>
+</div>
+<div id="script-block-8" class="section level4">
+<h4>Script block 8:</h4>
+<pre class="r"><code># Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
+CClength_crude = nchar(gsub(pattern = &quot;\\)&quot;,replacement = &quot;&quot;,x = gsub(pattern = &quot;\\(&quot;,replacement = &quot;&quot;,x = dataObj$CC)))
+plotCClength = CClength_crude[order(CClength_crude)]
+BPplot = dataObj$bp[order(CClength_crude)]
+
+# Should result in a exponential function-like graph
+plot(plotCClength,BPplot)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+</div>
+<div id="script-block-10" class="section level4">
+<h4>Script block 10:</h4>
+<pre class="r"><code>sp &lt;- get.smiles.parser()
+dc &lt;- get.desc.categories()
+
+for( i in 1:length(dataObj$CC)){
+
+    # Get smiles from result query and add information
+    molecule &lt;- parse.smiles(dataObj$CC[i])[[1]]
+    convert.implicit.to.explicit(molecule)
+    #formula &lt;- get.mol2formula(molecule,charge=0)
+
+
+    # Store the found information
+    #dataObj$formula[i] = {formula} # S4 object cannot be transferred nicely
+    #dataObj$mass[i] = formula@mass
+    #dataObj$string[i] = formula@string
+    #dataObj$charge[i] = formula@charge
+
+    # M/z values 
+    #dataObj$isotopes[i] = {get.isotopes.pattern(formula,minAbund=0.1)}
+
+    # Fingerprint? values
+    #dataObj$fingerprint[i] = {get.fingerprint(molecule = molecule)}
+
+    # Create a dataframe which contains all info possible to extract using the descriptors
+    datafr = dataObj$Comp[i]
+    for(o in 1:5){
+        dn &lt;- get.desc.names(dc[o])
+        datafr = cbind(datafr, eval.desc(molecule, dn))
+    }
+    
+    # This is done now as it will break if descriptors change (amount)
+    if(exists(&quot;mydata&quot;)){
+        mydata[i,] = datafr
+        }else{
+        mydata = datafr
+    }
+
+}
+
+# Make backup from data, easy for testing (resetting)
+mydataBACKUP = mydata
+mydata = mydataBACKUP
+
+# Remove names
+descs = mydata[,-1]
+
+
+#--------------------------------------------------------</code></pre>
+</div>
+<div id="script-block-11" class="section level4">
+<h4>Script block 11:</h4>
+<pre class="r"><code># Remove NAs n stuff
+descs &lt;- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
+descs &lt;- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
+
+# Correlate the descriptors with the boiling point; if these are linked, they should add some info
+corMatrix = cor(descs , dataObj$bp)
+corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
+
+# select first 15 components:
+componentNames = rownames(corMatrix)[1:15]
+descs = descs[,match(colnames(descs), x = componentNames)]
+
+
+
+# Old method, keepin this inside for further reference
+if(F){
+    mydata = mydataBACKUP
+
+    descs = mydata[,-1]
+
+
+    # crude way to extract &#39;important&#39; features based on correlation
+    descs &lt;- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
+    descs &lt;- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
+    r2 &lt;- which(cor(descs)^2 &gt; .9, arr.ind=TRUE) # when keeping this high, the prediction improves
+    r2 &lt;- r2[ r2[,1] &gt; r2[,2] , ]
+    descs &lt;- descs[, -unique(r2[,2])]
+}
+
+# should contain nAtomLAC; the amount of c atoms
+if(!exists(&quot;descs$nAtomLAC&quot;)){
+
+    descs = cbind(descs, mydata$nAtomLAC)
+    names(descs)[dim(descs)[2]] = &quot;n&quot;
+    }else{
+    names(descs)[names(descs)==&quot;descs$nAtomLAC&quot;] = &quot;n&quot;
+}
+
+# add parameters from paper!
+
+#descs$w = 1/6*(descs$n-1)*(descs$n)*(descs$n+1)
+#descs$p = descs$n - 3
+# the folowing screw up the analysis:
+#descs$A = 98/descs$n^2 * descs$w
+#descs$B = 5.5*descs$p
+
+# store resulting input file in my_data; as it is used everywhere
+my_data = descs
+
+#-----------------------------------------------------------------------------
+#Finish prepare data
+#-----------------------------------------------------------------------------
+# Add and define the &#39;to be predicted&#39; column
+n_col &lt;- ncol(my_data)
+BoilPoint = n_col+1
+my_data[,BoilPoint] = dataObj$bp
+names(my_data)[BoilPoint] = &#39;BoilPoint&#39;</code></pre>
+</div>
+<div id="script-block-12" class="section level4">
+<h4>Script block 12:</h4>
+<pre class="r"><code># ceiling(dim(my_data)[1]0.8)
+#make data objects
+samples.upper = sample(length(my_data[,1]), floor(length(my_data[,1])*Randomfactor))  #get all unique samples (not frequecies) and sample 80%
+samples.total = (1:length(my_data[,1])) # all unique samples (not frequecies)
+samples.lowerl = samples.total[!samples.total %in% samples.upper]  #which samples are sampled
+data.train = my_data[samples.upper,]#contains all upper logical
+data.train = as.data.frame(data.train)
+
+#data.train = t(data.train)
+data.test = my_data[samples.lowerl,]#contains all lower logical
+data.test = as.data.frame(data.test)
+#data.test = t(data.test)
+
+# NOTE: annotations are within location [,32007]
+data.train[,BoilPoint] = data.train[,BoilPoint]
+data.test[,BoilPoint] = data.test[,BoilPoint]
+
+#remove nas
+data.train=data.train[!is.na(data.train[,1]),]
+data.test=data.test[!is.na(data.test[,1]),]
+set.seed(123)
+
+
+xNN = data.train[,-(BoilPoint)]
+yNN = data.train[,BoilPoint]
+
+dat = data.frame(xNN, y = yNN)
+#yactual = data.test[,BoilPoint]
+yactual.test = data.test[,BoilPoint]
+yactual.train = data.train[,BoilPoint]</code></pre>
+</div>
+<div id="script-block-13" class="section level4">
+<h4>Script block 13:</h4>
+<pre class="r"><code># Glm! uses the 15 components 
+GLMfit = glm(y ~ ., dat,family = Gamma(link=&quot;log&quot;))
+
+#so put data.predicted and actual data.test together
+ypredGLM.test = predict(GLMfit, as.data.frame(data.test[,-(BoilPoint)]),type=&quot;response&quot;)</code></pre>
+<pre><code>## Warning in predict.lm(object, newdata, se.fit, scale = 1, type = if (type
+## == : prediction from a rank-deficient fit may be misleading</code></pre>
+<pre class="r"><code># Root mean squared error
+RMSE(yactual.test, ypredGLM.test)</code></pre>
+<pre><code>## [1] 17.44712</code></pre>
+<pre class="r"><code>#   Results in: 36.76
+
+# Mean absolute error
+MAE(yactual.test, ypredGLM.test)</code></pre>
+<pre><code>## [1] 8.680463</code></pre>
+<pre class="r"><code>#   Results in: 22.11
+
+plot(yactual.test, ypredGLM.test,
+     xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col=&#39;red&#39;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<pre class="r"><code>### Train set; over/underfitting ###
+ypredGLM.train = predict(GLMfit, as.data.frame(data.train[,-(BoilPoint)]),type=&quot;response&quot;)</code></pre>
+<pre><code>## Warning in predict.lm(object, newdata, se.fit, scale = 1, type = if (type
+## == : prediction from a rank-deficient fit may be misleading</code></pre>
+<pre class="r"><code>yactual.train = data.train[,BoilPoint]
+
+# Root mean squared error
+RMSE(data.train[,(BoilPoint)], ypredGLM.train)</code></pre>
+<pre><code>## [1] 5.087142</code></pre>
+<pre class="r"><code>#   Results in: 23.32
+
+# Mean absolute error
+MAE(data.train[,(BoilPoint)], ypredGLM.train)</code></pre>
+<pre><code>## [1] 3.585051</code></pre>
+<pre class="r"><code>#   Results in: 7.844
+
+plot(yactual.train, ypredGLM.train,
+     xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col=&#39;red&#39;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-12-2.png" width="672" /></p>
+</div>
+<div id="script-block-14" class="section level4">
+<h4>Script block 14:</h4>
+<pre class="r"><code># S3 method for formula
+PLSfit = plsr(y ~ ., data = dat,family = Gamma(link=&quot;log&quot;), validation = &quot;LOO&quot;)
+
+# Select amount of components
+ncomp.onesigma &lt;- selectNcomp(PLSfit, method = &quot;onesigma&quot;, plot = TRUE)</code></pre>
+<pre><code>## Warning in arrows(xvals, uls, xvals, rmseps + residsds, code = 3, col =
+## &quot;gray&quot;, : zero-length arrow is of indeterminate angle and so skipped
+
+## Warning in arrows(xvals, uls, xvals, rmseps + residsds, code = 3, col =
+## &quot;gray&quot;, : zero-length arrow is of indeterminate angle and so skipped
+
+## Warning in arrows(xvals, uls, xvals, rmseps + residsds, code = 3, col =
+## &quot;gray&quot;, : zero-length arrow is of indeterminate angle and so skipped
+
+## Warning in arrows(xvals, uls, xvals, rmseps + residsds, code = 3, col =
+## &quot;gray&quot;, : zero-length arrow is of indeterminate angle and so skipped
+
+## Warning in arrows(xvals, uls, xvals, rmseps + residsds, code = 3, col =
+## &quot;gray&quot;, : zero-length arrow is of indeterminate angle and so skipped</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<pre class="r"><code>ncomp.permut &lt;- selectNcomp(PLSfit, method = &quot;randomization&quot;, plot = TRUE)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-13-2.png" width="672" /></p>
+<pre class="r"><code># If methods doubt between 5 or 7 components, take the highest rounded mean (6).
+PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = dat, validation = &quot;LOO&quot;)
+
+#so put data.predicted and actual data.test together
+ypredPLS.test = predict(PLSfit, as.data.frame(data.test[,-(BoilPoint)]),type=&quot;response&quot;)
+
+# Root mean squared error
+RMSE(yactual.test, ypredPLS.test)</code></pre>
+<pre><code>## [1] 75.58034</code></pre>
+<pre class="r"><code>#   Results in: 53.59
+
+# Mean absolute error
+MAE(yactual.test, ypredPLS.test)</code></pre>
+<pre><code>## [1] 53.1495</code></pre>
+<pre class="r"><code>#   Results in: 39.25
+
+
+plot(yactual.test, ypredPLS.test[,,dim(ypredPLS.test)[3]],
+     xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col=&#39;red&#39;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-13-3.png" width="672" /></p>
+<pre class="r"><code>### Train set; over/underfitting ###
+
+#so put data.predicted and actual data.test together
+ypredPLS.train = predict(PLSfit, as.data.frame(data.train[,-(BoilPoint)]),type=&quot;response&quot;)
+
+# Root mean squared error
+RMSE(yactual.train, ypredPLS.train)</code></pre>
+<pre><code>## [1] 63.88816</code></pre>
+<pre class="r"><code>#   Results in: 53.59
+
+# Mean absolute error
+MAE(yactual.train, ypredPLS.train)</code></pre>
+<pre><code>## [1] 47.18422</code></pre>
+<pre class="r"><code>#   Results in: 39.25
+
+
+plot(yactual.train, ypredPLS.train[,,dim(ypredPLS.train)[3]],
+     xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col=&#39;red&#39;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-13-4.png" width="672" /></p>
+</div>
+<div id="script-block-15" class="section level4">
+<h4>Script block 15:</h4>
+<pre class="r"><code>prot.rf &lt;- randomForest(y ~ ., importance=TRUE, proximity=TRUE,data=dat, ntree=200)
+
+# after building the random forest, now we apply it on the test dataset
+ypredRF.test &lt;- predict(prot.rf, data.test[,-(BoilPoint)])
+
+
+# Root mean squared error
+RMSE(yactual.test, ypredRF.test)</code></pre>
+<pre><code>## [1] 27.10267</code></pre>
+<pre class="r"><code>#   Results in: 20.26
+
+# Mean absolute error
+MAE(yactual.test, ypredRF.test)</code></pre>
+<pre><code>## [1] 10.84617</code></pre>
+<pre class="r"><code>#   Results in: 7.63
+
+
+
+
+# after building the random forest, now we apply it on the test dataset
+ypredRF.train &lt;- predict(prot.rf, data.train[,-(BoilPoint)])
+
+
+# Root mean squared error
+RMSE(yactual.train, ypredRF.train)</code></pre>
+<pre><code>## [1] 6.358984</code></pre>
+<pre class="r"><code>#   Results in: 20.26
+
+# Mean absolute error
+MAE(yactual.train, ypredRF.train)</code></pre>
+<pre><code>## [1] 3.50678</code></pre>
+<pre class="r"><code>#   Results in: 7.63</code></pre>
+</div>
+<div id="script-block-9" class="section level4">
+<h4>Script block 9:</h4>
+<pre class="r"><code>print(&quot;the end&quot;)</code></pre>
+<pre><code>## [1] &quot;the end&quot;</code></pre>
+</div>
 </div>
 
 

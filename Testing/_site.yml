@@ -3,4 +3,10 @@ navbar:
   title: "My Website"
   left:
     - text: "Home"
-      href: page1.html
+      href: index.html
+    - text: "Used packages"
+      href: version.html
+    - text: "Code"
+      href: raw.html
+    - text: "About"
+      href: about.html

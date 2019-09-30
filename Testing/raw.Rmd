@@ -1,29 +1,31 @@
 ---
-title: "Prediction of boiling points using WikiData and Machine learning techniques"
-output: html_document
+title: "Raw code"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+```{}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 00		GENERAL INFORMATION
+#-----------------------------------------------------------------------------------------------------#
 
-## Introduction
+# Copyright statement comment:
+#   All rights reserved.
+#
+# Author comment:
+#   Rick Reijnders
+#   Script version: 29-09-2019
 
-This GitHub Page is a final product of assignment 2, requested by the course MSB1015 (Scientific Programming). The goal is to create a GitHub Page (notebook) for the following analysis. The boiling points of alkenes need to be predicted based on data from WikiData; Smiles are used to enrich the data using the rcdk package in R, afterward, machine learning is applied. 
-
-## Workflow
-Data extraction from wikidata (alkene name, smiles, boiling point).
-
-Data expansion and cleanup (using rcdk).
-
-Apply machine learing techniques using the expanded data, to predict boiling point (glm, plsr, randomForest).
-
-Compare results.
-
-
-
-#### Script block 1:
-```{r}
+# File description:
+#	Name
+#	  raw R-script.R
+#
+#   Purpose
+#     
+#   Inputs
+#	  
+rm(list=ls())
+#-----------------------------------------------------------------------------------------------------#
+#		Block 01		(Install &) Load packages
+#-----------------------------------------------------------------------------------------------------#
 # Install packages if needed and load, or just load packages
 if (!requireNamespace("BiocManager", quietly = TRUE))
   install.packages("BiocManager", ask = F)
@@ -48,11 +50,10 @@ Error.style <- red
 
 cat(Warning.style("Done running block 01\n"))
 cat(Confirm.style("Starting...\n"))
-```
 
-
-#### Script block 2:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 02		SETTINGS
+#-----------------------------------------------------------------------------------------------------#
 # General settings
 options(stringsAsFactors 	= F)
 Verbose 					= 3		#0-3:	0= no feedback  1= prints results  2=prints results + feedback  3= prints all
@@ -64,10 +65,11 @@ Randomfactor = 0.8
 set.seed(1)
 
 if(Verbose>=3) cat(Warning.style("Done running block 02a\n"))
-```
 
-#### Script block 3:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		FUNCTIONS
+#-----------------------------------------------------------------------------------------------------#
+
 # Root Mean Squared Error
 RMSE = function(yact, ypred){
   sqrt(mean((yact - ypred)^2))
@@ -78,10 +80,10 @@ MAE = function(yact, ypred){
   mean(abs(yact - ypred))
 }
 
-```
 
-#### Script block 4:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		Get query results
+#-----------------------------------------------------------------------------------------------------#
 endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
 query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
@@ -96,10 +98,10 @@ query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
 '
 
 dataObj = query_wikidata(query)
-```
 
-#### Script block 5:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		bp check ; to kelvin
+#-----------------------------------------------------------------------------------------------------#
 #C to Kelvin:
 # 0°C + 273.15 = 273,15K
 idC = which(dataObj$bpUnitLabel=="degree Celsius")
@@ -125,26 +127,24 @@ dataObjBACKUP = dataObj
 # Finalize data structure
 dataObj = data.frame(dataObjBACKUP$compLabel, dataObjBACKUP$bp, dataObjBACKUP$CC)
 names(dataObj) = c("Comp","bp","CC")
-```
-
-#### Script block 6:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#							TEST FILTER TO GET LINEAR ALKANES
+#-----------------------------------------------------------------------------------------------------#
 
 dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
-```
 
-#### Script block 7:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		OUTLIER TESTING
+#-----------------------------------------------------------------------------------------------------#
 # hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
 dataObj$bp[dataObj$Comp=="hexatriacontane"] = 770.15
 
 # Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k
 dataObj$bp[dataObj$Comp=="Dooctacontane"] = 958.05
 
-```
-
-#### Script block 8:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#		Block 03		DATA VISZ
+#-----------------------------------------------------------------------------------------------------#
 # Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
 CClength_crude = nchar(gsub(pattern = "\\)",replacement = "",x = gsub(pattern = "\\(",replacement = "",x = dataObj$CC)))
 plotCClength = CClength_crude[order(CClength_crude)]
@@ -154,10 +154,12 @@ BPplot = dataObj$bp[order(CClength_crude)]
 plot(plotCClength,BPplot)
 
 
-```
 
-#### Script block 10:
-```{r}
+
+
+#-----------------------------------------------------------------------------------------------------#
+# 		Block 03		rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
+#-----------------------------------------------------------------------------------------------------#
 
 sp <- get.smiles.parser()
 dc <- get.desc.categories()
@@ -206,11 +208,9 @@ mydata = mydataBACKUP
 descs = mydata[,-1]
 
 
-#--------------------------------------------------------
-```
-
-#### Script block 11:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#							Latent variable selection (correlation)
+#-----------------------------------------------------------------------------------------------------#
 # Remove NAs n stuff
 descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
 descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
@@ -269,10 +269,15 @@ BoilPoint = n_col+1
 my_data[,BoilPoint] = dataObj$bp
 names(my_data)[BoilPoint] = 'BoilPoint'
 
-```
 
-#### Script block 12:
-```{r}
+
+#-----------------------------------------------------------------------------------------------------#
+#							MACHINE LEARINGN
+#-----------------------------------------------------------------------------------------------------#
+
+#-----------------------------------------------------------------------------------------------------#
+# 				Data subsetting; Train; Test
+#-----------------------------------------------------------------------------------------------------#
 # ceiling(dim(my_data)[1]0.8)
 #make data objects
 samples.upper = sample(length(my_data[,1]), floor(length(my_data[,1])*Randomfactor))  #get all unique samples (not frequecies) and sample 80%
@@ -303,10 +308,71 @@ dat = data.frame(xNN, y = yNN)
 #yactual = data.test[,BoilPoint]
 yactual.test = data.test[,BoilPoint]
 yactual.train = data.train[,BoilPoint]
-```
 
-#### Script block 13:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#							PLS MODEL VALIDATION NOT RUNNING ATM!
+#-----------------------------------------------------------------------------------------------------#
+#NOT RUNNING ATM! 
+if(F){
+
+# so the model from the paper https://pubs.acs.org/doi/abs/10.1021/ja01193a005 is:
+# tB = aw + bp + c
+# a = constant
+# b = constant
+# c = constant
+# p = polarity number
+# w = sum of dist; number of carbonatoms to left multiply by remaining right; use all bounds
+
+# resulted formula:  t = 98/n^2 * w + 5.5*p
+# w = 1/6*(n-1)*(n)*(n+1)
+# p = n - 3
+
+# Rephrased formula:  t = A + B
+# A = 98/n^2 * w
+# B = 5.5*p
+# w = 1/6*(n-1)*(n)*(n+1)
+# p = n - 3
+
+
+datPLS = dat
+datPLS$w = 1/6*(datPLS$n-1)*(datPLS$n)*(datPLS$n+1)
+datPLS$p = datPLS$n - 3
+datPLS$A = 98/datPLS$n^2 * datPLS$w
+datPLS$B = 5.5*datPLS$p
+
+data.testPLS = data.test
+data.testPLS$w = 1/6*(data.test$n-1)*(data.test$n)*(data.test$n+1)
+data.testPLS$p = data.test$n - 3
+data.testPLS$A = 98/data.testPLS$n^2 * data.testPLS$w
+data.testPLS$B = 5.5*data.testPLS$p
+
+# PLS MODEL
+PLSfit = plsr(y ~ A + B, data = datPLS, validation = "LOO")
+
+
+# Select amount of components
+ncomp.onesigma <- selectNcomp(PLSfit, method = "onesigma", plot = TRUE)
+ncomp.permut <- selectNcomp(PLSfit, method = "randomization", plot = TRUE)
+
+# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
+PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = datPLS, validation = "LOO")
+
+#so put data.predicted and actual data.test together
+ypredPLS = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type="response")
+
+# Root mean squared error
+RMSE(yactual, ypredPLS)
+#	Results in: 53.59
+
+# Mean absolute error
+MAE(yactual, ypredPLS)
+#	Results in: 39.25
+
+}
+
+#-----------------------------------------------------------------------------------------------------#
+#							Linear Regression (exponential)
+#-----------------------------------------------------------------------------------------------------#
 
 # Glm! uses the 15 components 
 GLMfit = glm(y ~ ., dat,family = Gamma(link="log"))
@@ -347,10 +413,11 @@ plot(yactual.train, ypredGLM.train,
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
-```
 
-#### Script block 14:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+#							Linear Regression
+#-----------------------------------------------------------------------------------------------------#
+
 
 # S3 method for formula
 PLSfit = plsr(y ~ ., data = dat,family = Gamma(link="log"), validation = "LOO")
@@ -399,10 +466,10 @@ plot(yactual.train, ypredPLS.train[,,dim(ypredPLS.train)[3]],
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
-```
 
-#### Script block 15:
-```{r}
+#-----------------------------------------------------------------------------------------------------#
+# 										RF
+#-----------------------------------------------------------------------------------------------------#
 
 
 prot.rf <- randomForest(y ~ ., importance=TRUE, proximity=TRUE,data=dat, ntree=200)
@@ -433,29 +500,9 @@ RMSE(yactual.train, ypredRF.train)
 # Mean absolute error
 MAE(yactual.train, ypredRF.train)
 #	Results in: 7.63
-
-
 ```
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#### Script block 9:
-```{r}
-print("the end")
-```
 
