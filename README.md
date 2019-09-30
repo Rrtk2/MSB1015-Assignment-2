@@ -1,6 +1,6 @@
 # MSB1015-Assignment-2
 
-[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Setting_up-orange) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
+[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Ongoing-yellow) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
 
 
 #### What is this project about
@@ -9,17 +9,17 @@ The setup of a [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) need
 
 
 #### Usage
-(empty)
+Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project.
 
 #### Expected output
-(empty)
+Using the default settings the output should be very similar to **'(empty)'** in the 'Expected output' folder.  Download all the files in the folder to open the page correctly.
 
 #### Project structure
 ##### Where does data come from?
-(empty)
+The query asks information from [Wikidata](http://wikidata.org) in a similar fasion the dedicated [Wikidata database query](https://query.wikidata.org/) works using the SPARQL language. Data on wikidata is published under the [Creative Commons Zero](https://creativecommons.org/share-your-work/public-domain/cc0) licence, stating 'others may freely build upon, enhance and reuse the works for any purposes without restriction under copyright or database law'.
 
 ##### How is data shared, in what format, with what protocols?
-(empty)
+Using the tool developed in this project, data is shared using the [wikidata-sdk](https://www.wikidata.org/w/api.php). 
 
 ##### How is data processed and analyzed?
 (empty)
@@ -42,7 +42,7 @@ RRtK2 (owner and contributor)
 
 
 #### Status of project
-Setting up essentials to start project.
+Ongoing. Creating all essential code in the [script](/Testing/raw R-script.R) needed to create the final product for this assignment.
 
 
 #### Copyright and authors
