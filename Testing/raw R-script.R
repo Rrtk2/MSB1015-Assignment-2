@@ -27,7 +27,7 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages <-
-  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","neuralnet","randomForest","gplots","limma","ggfortify",
+  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","neuralnet","randomForest","gplots","limma","ggfortify","curl",
 	"crayon")
 	
 for (i in requiredpackages) {
@@ -310,7 +310,7 @@ yactual.train = data.train[,BoilPoint]
 #NOT RUNNING ATM! 
 if(F){
 
-# so the model from the paper https://pubs.acs.org/doi/abs/10.1021/ja01193a005 is:
+# so the model from the paper https://pubs.acs.org/doi/pdf/10.1021/ja01193a005 is:
 # tB = aw + bp + c
 # a = constant
 # b = constant
@@ -329,39 +329,72 @@ if(F){
 # p = n - 3
 
 
-datPLS = dat
+datPLS = dat[dat$n>0,]
+yactual.train = datPLS$y
+
 datPLS$w = 1/6*(datPLS$n-1)*(datPLS$n)*(datPLS$n+1)
 datPLS$p = datPLS$n - 3
-datPLS$A = 98/datPLS$n^2 * datPLS$w
-datPLS$B = 5.5*datPLS$p
+datPLS$A = 98/(datPLS$n^2) * datPLS$w
+datPLS= datPLS[,c(dim(datPLS)[2]:16)]
 
-data.testPLS = data.test
+
+data.testPLS = data.test[data.test$n>0,]
+yactual.test = data.testPLS$BoilPoint
 data.testPLS$w = 1/6*(data.test$n-1)*(data.test$n)*(data.test$n+1)
 data.testPLS$p = data.test$n - 3
-data.testPLS$A = 98/data.testPLS$n^2 * data.testPLS$w
-data.testPLS$B = 5.5*data.testPLS$p
+data.testPLS$A = 98/(data.testPLS$n^2) * data.testPLS$w
+data.testPLS= data.testPLS[,c(dim(data.testPLS)[2]:16)]
+
 
 # PLS MODEL
-PLSfit = plsr(y ~ A + B, data = datPLS, validation = "LOO")
+PLSfittest = plsr(y ~ n + w + p + A, data = datPLS, validation = "LOO")
 
 
 # Select amount of components
-ncomp.onesigma <- selectNcomp(PLSfit, method = "onesigma", plot = TRUE)
-ncomp.permut <- selectNcomp(PLSfit, method = "randomization", plot = TRUE)
+ncomp.onesigma <- selectNcomp(PLSfittest, method = "onesigma", plot = TRUE)
+ncomp.permut <- selectNcomp(PLSfittest, method = "randomization", plot = TRUE)
+amountComp = ceiling(mean(ncomp.onesigma,ncomp.permut))
+
 
 # If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = datPLS, validation = "LOO")
+PLSfit = plsr(y ~ n + w + p + A, ncomp = amountComp, data = datPLS, validation = "LOO")
 
 #so put data.predicted and actual data.test together
-ypredPLS = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type="response")
+ypredPLS.test = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type="response")
 
 # Root mean squared error
-RMSE(yactual, ypredPLS)
-#	Results in: 53.59
+RMSE(yactual.test, ypredPLS.test)
+#	Results in: 87
 
 # Mean absolute error
-MAE(yactual, ypredPLS)
-#	Results in: 39.25
+MAE(yactual.test, ypredPLS.test)
+#	Results in: 52
+
+
+plot(yactual.test, ypredPLS.test[,,amountComp],
+     xlab="Observed BP test set", ylab="Predicted BP test set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
+
+ypredPLS.train = predict(PLSfit, datPLS[,-4],type="response")
+
+# Root mean squared error
+RMSE(yactual.train, ypredPLS.train[,,amountComp])
+#	Results in: 19
+
+# Mean absolute error
+MAE(yactual.train, ypredPLS.train[,,amountComp])
+#	Results in: 15
+
+
+plot(yactual.train, ypredPLS.train[,,amountComp],
+     xlab="Observed BP train set", ylab="Predicted BP train set",
+     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+abline(0,1, col='red')
+
+
 
 }
 
