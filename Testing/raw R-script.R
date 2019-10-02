@@ -27,8 +27,8 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages <-
-  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","neuralnet","randomForest","gplots","limma","ggfortify","curl",
-	"crayon")
+  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","guassprLinearl","randomForest","gplots","limma","ggfortify","curl",
+	"caret","tidyverse","crayon")
 	
 for (i in requiredpackages) {
 	if (!requireNamespace(i, quietly = TRUE))
@@ -210,6 +210,7 @@ descs = mydata[,-1]
 descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
 descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
 
+if(T){
 # Correlate the descriptors with the boiling point; if these are linked, they should add some info
 corMatrix = cor(descs , dataObj$bp)
 corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
@@ -217,7 +218,7 @@ corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
 # select first 15 components:
 componentNames = rownames(corMatrix)[1:15]
 descs = descs[,match(colnames(descs), x = componentNames)]
-
+}
 
 
 # Old method, keepin this inside for further reference
@@ -243,6 +244,7 @@ if(!exists("descs$nAtomLAC")){
 	}else{
 	names(descs)[names(descs)=="descs$nAtomLAC"] = "n"
 }
+descs$n2 = descs$n^2
 
 # add parameters from paper!
 
@@ -264,6 +266,7 @@ BoilPoint = n_col+1
 my_data[,BoilPoint] = dataObj$bp
 names(my_data)[BoilPoint] = 'BoilPoint'
 
+my_data = my_data[order(my_data$BoilPoint),]
 
 
 #-----------------------------------------------------------------------------------------------------#
@@ -275,7 +278,12 @@ names(my_data)[BoilPoint] = 'BoilPoint'
 #-----------------------------------------------------------------------------------------------------#
 # ceiling(dim(my_data)[1]0.8)
 #make data objects
-samples.upper = sample(length(my_data[,1]), floor(length(my_data[,1])*Randomfactor))  #get all unique samples (not frequecies) and sample 80%
+sample.length = length(my_data[,1])
+sample.biasprob = 1 - 1:sample.length /max(sample.length )/2
+
+#make data objects
+samples.upper = sample(sample.length , floor(length(my_data[,1])*Randomfactor),prob = sample.biasprob ) #get all unique samples (not frequecies) and sample 80%
+plot(samples.upper[order(samples.upper)])
 samples.total = (1:length(my_data[,1])) # all unique samples (not frequecies)
 samples.lowerl = samples.total[!samples.total %in% samples.upper]  #which samples are sampled
 data.train = my_data[samples.upper,]#contains all upper logical
@@ -293,241 +301,119 @@ data.test[,BoilPoint] = data.test[,BoilPoint]
 #remove nas
 data.train=data.train[!is.na(data.train[,1]),]
 data.test=data.test[!is.na(data.test[,1]),]
-set.seed(123)
+set.seed(1)
 
 
 xNN = data.train[,-(BoilPoint)]
 yNN = data.train[,BoilPoint]
 
 dat = data.frame(xNN, y = yNN)
-#yactual = data.test[,BoilPoint]
-yactual.test = data.test[,BoilPoint]
-yactual.train = data.train[,BoilPoint]
+
+
+
+data.train = dat[dat$n>0,]
+yactual.train = data.train$y
+
+data.test = data.test[data.test$n>0,]
+yactual.test = data.test$BoilPoint
+
+
 
 #-----------------------------------------------------------------------------------------------------#
-#							PLS MODEL VALIDATION NOT RUNNING ATM!
+#							CARET TEST : RF
 #-----------------------------------------------------------------------------------------------------#
-#NOT RUNNING ATM! 
-if(F){
-
-# so the model from the paper https://pubs.acs.org/doi/pdf/10.1021/ja01193a005 is:
-# tB = aw + bp + c
-# a = constant
-# b = constant
-# c = constant
-# p = polarity number
-# w = sum of dist; number of carbonatoms to left multiply by remaining right; use all bounds
-
-# resulted formula:  t = 98/n^2 * w + 5.5*p
-# w = 1/6*(n-1)*(n)*(n+1)
-# p = n - 3
-
-# Rephrased formula:  t = A + B
-# A = 98/n^2 * w
-# B = 5.5*p
-# w = 1/6*(n-1)*(n)*(n+1)
-# p = n - 3
+# this block uses the caret package, likely this block will be copied and used to utelize multiple MLmethods
 
 
-datPLS = dat[dat$n>0,]
-yactual.train = datPLS$y
+# define training control
+train_control <- trainControl(method="cv", number=10)
+# fix the parameters of the algorithm
+# grid <- expand.grid(.fL=c(0), .usekernel=c(FALSE))
+# train the model
+model <- train(y~., data=data.train, trControl=train_control, method="rf")
 
-datPLS$w = 1/6*(datPLS$n-1)*(datPLS$n)*(datPLS$n+1)
-datPLS$p = datPLS$n - 3
-datPLS$A = 98/(datPLS$n^2) * datPLS$w
-datPLS= datPLS[,c(dim(datPLS)[2]:16)]
-
-
-data.testPLS = data.test[data.test$n>0,]
-yactual.test = data.testPLS$BoilPoint
-data.testPLS$w = 1/6*(data.test$n-1)*(data.test$n)*(data.test$n+1)
-data.testPLS$p = data.test$n - 3
-data.testPLS$A = 98/(data.testPLS$n^2) * data.testPLS$w
-data.testPLS= data.testPLS[,c(dim(data.testPLS)[2]:16)]
-
-
-# PLS MODEL
-PLSfittest = plsr(y ~ n + w + p + A, data = datPLS, validation = "LOO")
-
-
-# Select amount of components
-ncomp.onesigma <- selectNcomp(PLSfittest, method = "onesigma", plot = TRUE)
-ncomp.permut <- selectNcomp(PLSfittest, method = "randomization", plot = TRUE)
-amountComp = ceiling(mean(ncomp.onesigma,ncomp.permut))
-
-
-# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ n + w + p + A, ncomp = amountComp, data = datPLS, validation = "LOO")
-
-#so put data.predicted and actual data.test together
-ypredPLS.test = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type="response")
+ypredCARET.rf.test <- model %>% predict(data.test)
 
 # Root mean squared error
-RMSE(yactual.test, ypredPLS.test)
-#	Results in: 87
-
-# Mean absolute error
-MAE(yactual.test, ypredPLS.test)
-#	Results in: 52
-
-
-plot(yactual.test, ypredPLS.test[,,amountComp],
-     xlab="Observed BP test set", ylab="Predicted BP test set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
-
-
-
-ypredPLS.train = predict(PLSfit, datPLS[,-4],type="response")
-
-# Root mean squared error
-RMSE(yactual.train, ypredPLS.train[,,amountComp])
-#	Results in: 19
-
-# Mean absolute error
-MAE(yactual.train, ypredPLS.train[,,amountComp])
-#	Results in: 15
-
-
-plot(yactual.train, ypredPLS.train[,,amountComp],
-     xlab="Observed BP train set", ylab="Predicted BP train set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
-
-
-
-}
-
-#-----------------------------------------------------------------------------------------------------#
-#							Linear Regression (exponential)
-#-----------------------------------------------------------------------------------------------------#
-
-# Glm! uses the 15 components 
-GLMfit = glm(y ~ ., dat,family = Gamma(link="log"))
-
-#so put data.predicted and actual data.test together
-ypredGLM.test = predict(GLMfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
-
-
-# Root mean squared error
-RMSE(yactual.test, ypredGLM.test)
+RMSE(yactual.test, ypredCARET.rf.test)
 #	Results in: 36.76
 
 # Mean absolute error
-MAE(yactual.test, ypredGLM.test)
+MAE(yactual.test, ypredCARET.rf.test)
 #	Results in: 22.11
 
-plot(yactual.test, ypredGLM.test,
+plot(yactual.test, ypredCARET.rf.test,
      xlab="Observed BP test set", ylab="Predicted BP test set",
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
 
-
-### Train set; over/underfitting ###
-ypredGLM.train = predict(GLMfit, as.data.frame(data.train[,-(BoilPoint)]),type="response")
-yactual.train = data.train[,BoilPoint]
+ypredCARET.rf.train <- model %>% predict(data.train)
 
 # Root mean squared error
-RMSE(data.train[,(BoilPoint)], ypredGLM.train)
-#	Results in: 23.32
+RMSE(yactual.train, ypredCARET.rf.train)
+#	Results in: 36.76
 
 # Mean absolute error
-MAE(data.train[,(BoilPoint)], ypredGLM.train)
-#	Results in: 7.844
+MAE(yactual.train, ypredCARET.rf.train)
+#	Results in: 22.11
 
-plot(yactual.train, ypredGLM.train,
+plot(yactual.train, ypredCARET.rf.train,
      xlab="Observed BP train set", ylab="Predicted BP train set",
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
+#varImp(model)
+
 
 #-----------------------------------------------------------------------------------------------------#
-#							Linear Regression
+#							CARET TEST : pls
 #-----------------------------------------------------------------------------------------------------#
+# this block uses the caret package, likely this block will be copied and used to utelize multiple MLmethods
 
 
-# S3 method for formula
-PLSfit = plsr(y ~ ., data = dat,family = Gamma(link="log"), validation = "LOO")
+# define training control
+train_control <- trainControl(method="cv", number=10)
+# fix the parameters of the algorithm
+# grid <- expand.grid(.fL=c(0), .usekernel=c(FALSE))
+# train the model
+model <- train(y~., data=data.train, trControl=train_control, method="pls")
 
-# Select amount of components
-ncomp.onesigma <- selectNcomp(PLSfit, method = "onesigma", plot = TRUE)
-ncomp.permut <- selectNcomp(PLSfit, method = "randomization", plot = TRUE)
-
-# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = dat, validation = "LOO")
-
-#so put data.predicted and actual data.test together
-ypredPLS.test = predict(PLSfit, as.data.frame(data.test[,-(BoilPoint)]),type="response")
+ypredCARET.pls.test <- model %>% predict(data.test)
 
 # Root mean squared error
-RMSE(yactual.test, ypredPLS.test)
-#	Results in: 53.59
+RMSE(yactual.test, ypredCARET.pls.test)
+#	Results in: 36.76
 
 # Mean absolute error
-MAE(yactual.test, ypredPLS.test)
-#	Results in: 39.25
+MAE(yactual.test, ypredCARET.pls.test)
+#	Results in: 22.11
 
-
-plot(yactual.test, ypredPLS.test[,,dim(ypredPLS.test)[3]],
+plot(yactual.test, ypredCARET.pls.test,
      xlab="Observed BP test set", ylab="Predicted BP test set",
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
 
-### Train set; over/underfitting ###
-
-#so put data.predicted and actual data.test together
-ypredPLS.train = predict(PLSfit, as.data.frame(data.train[,-(BoilPoint)]),type="response")
+ypredCARET.pls.train <- model %>% predict(data.train)
 
 # Root mean squared error
-RMSE(yactual.train, ypredPLS.train)
-#	Results in: 53.59
+RMSE(yactual.train, ypredCARET.pls.train)
+#	Results in: 36.76
 
 # Mean absolute error
-MAE(yactual.train, ypredPLS.train)
-#	Results in: 39.25
+MAE(yactual.train, ypredCARET.pls.train)
+#	Results in: 22.11
 
-
-plot(yactual.train, ypredPLS.train[,,dim(ypredPLS.train)[3]],
+plot(yactual.train, ypredCARET.pls.train,
      xlab="Observed BP train set", ylab="Predicted BP train set",
      pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
 abline(0,1, col='red')
 
 
-#-----------------------------------------------------------------------------------------------------#
-# 										RF
-#-----------------------------------------------------------------------------------------------------#
+plot(varImp(model))
 
 
-prot.rf <- randomForest(y ~ ., importance=TRUE, proximity=TRUE,data=dat, ntree=200)
-
-# after building the random forest, now we apply it on the test dataset
-ypredRF.test <- predict(prot.rf, data.test[,-(BoilPoint)])
-
-
-# Root mean squared error
-RMSE(yactual.test, ypredRF.test)
-#	Results in: 20.26
-
-# Mean absolute error
-MAE(yactual.test, ypredRF.test)
-#	Results in: 7.63
-
-
-
-
-# after building the random forest, now we apply it on the test dataset
-ypredRF.train <- predict(prot.rf, data.train[,-(BoilPoint)])
-
-
-# Root mean squared error
-RMSE(yactual.train, ypredRF.train)
-#	Results in: 20.26
-
-# Mean absolute error
-MAE(yactual.train, ypredRF.train)
-#	Results in: 7.63
 
 
 
