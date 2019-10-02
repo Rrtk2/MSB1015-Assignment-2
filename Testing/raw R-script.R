@@ -7,16 +7,13 @@
 #
 # Author comment:
 #   Rick Reijnders
-#   Script version: 29-09-2019
+#   Script version: 02-10-2019
 
 # File description:
 #	Name
 #	  raw R-script.R
 #
-#   Purpose
-#     
-#   Inputs
-#	  
+  
 rm(list=ls()) # clean workspace
 
 
@@ -48,6 +45,7 @@ options(stringsAsFactors 	= F)
 
 # Select 80% for train, 20% for test
 Randomfactor = 0.8
+linearAlkanesOnly = 0  # 1 = yes; 0 = no.
 
 # Setting seed to keep consistent results 
 set.seed(1)
@@ -119,8 +117,9 @@ names(dataObj) = c("Comp","bp","CC")
 #-----------------------------------------------------------------------------------------------------#
 #							TEST FILTER TO GET LINEAR ALKANES
 #-----------------------------------------------------------------------------------------------------#
-dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
-
+if(linearAlkanesOnly == 1){
+	dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
+}
 
 #-----------------------------------------------------------------------------------------------------#
 #		Block 03		OUTLIER TESTING
@@ -143,6 +142,8 @@ BPplot = dataObj$bp[order(CClength_crude)]
 # Should result in a exponential function-like graph
 plot(plotCClength,BPplot)
 
+# Show how the data is distributed (focussing on bp)
+hist(dataObj$bp,breaks=20)
 
 #-----------------------------------------------------------------------------------------------------#
 # 		Block 03		rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
@@ -342,53 +343,54 @@ abline(0,1, col='red')
 #-----------------------------------------------------------------------------------------------------#
 #							CARET : RF
 #-----------------------------------------------------------------------------------------------------#
-# Define training control method; 10 - k - cross validation
-train_control <- trainControl(method="cv", number=10)
+if(F){
+	# Define training control method; 10 - k - cross validation
+	train_control <- trainControl(method="cv", number=10)
 
-# Train the model
-model <- train(y~., data=data.train, trControl=train_control, method="rf")
+	# Train the model
+	model <- train(y~., data=data.train, trControl=train_control, method="rf")
 
-# Find out what model is best
-print(model)
+	# Find out what model is best
+	print(model)
 
-# Find out most important variables
-# plot(varImp(model))
+	# Find out most important variables
+	# plot(varImp(model))
 
-# Predict test set
-ypredCARET.rf.test <- model %>% predict(data.test)
+	# Predict test set
+	ypredCARET.rf.test <- model %>% predict(data.test)
 
-# Root mean squared error
-RMSE(yactual.test, ypredCARET.rf.test)
-# Results in: 10.61
+	# Root mean squared error
+	RMSE(yactual.test, ypredCARET.rf.test)
+	# Results in: 10.61
 
-# Mean absolute error
-MAE(yactual.test, ypredCARET.rf.test)
-# Results in: 10.00
+	# Mean absolute error
+	MAE(yactual.test, ypredCARET.rf.test)
+	# Results in: 10.00
 
-# Plot ypred vs yactual of test data
-plot(yactual.test, ypredCARET.rf.test,
-     xlab="Observed BP test set", ylab="Predicted BP test set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
+	# Plot ypred vs yactual of test data
+	plot(yactual.test, ypredCARET.rf.test,
+		 xlab="Observed BP test set", ylab="Predicted BP test set",
+		 pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+	abline(0,1, col='red')
 
-# Predict training data; check overfitting
-ypredCARET.rf.train <- model %>% predict(data.train)
+	# Predict training data; check overfitting
+	ypredCARET.rf.train <- model %>% predict(data.train)
 
-# Root mean squared error
-RMSE(yactual.train, ypredCARET.rf.train)
-# Results in: 13.60
+	# Root mean squared error
+	RMSE(yactual.train, ypredCARET.rf.train)
+	# Results in: 13.60
 
-# Mean absolute error
-MAE(yactual.train, ypredCARET.rf.train)
-# Results in: 10.26
+	# Mean absolute error
+	MAE(yactual.train, ypredCARET.rf.train)
+	# Results in: 10.26
 
-# Plot ypred vs yactual of training data
-plot(yactual.train, ypredCARET.rf.train,
-     xlab="Observed BP train set", ylab="Predicted BP train set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
+	# Plot ypred vs yactual of training data
+	plot(yactual.train, ypredCARET.rf.train,
+		 xlab="Observed BP train set", ylab="Predicted BP train set",
+		 pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+	abline(0,1, col='red')
 
-
+}
 
 
 
