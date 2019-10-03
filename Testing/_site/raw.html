@@ -328,12 +328,12 @@ if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages &lt;-
-  c(&quot;WikidataQueryServiceR&quot;,&quot;ggplot2&quot;,&quot;rJava&quot;,&quot;rcdk&quot;,&quot;pls&quot;,&quot;e1071&quot;,&quot;guassprLinearl&quot;,&quot;randomForest&quot;,
-  &quot;gplots&quot;,&quot;limma&quot;,&quot;ggfortify&quot;,&quot;curl&quot;,&quot;caret&quot;,&quot;tidyverse&quot;,&quot;crayon&quot;)
+  c(&quot;WikidataQueryServiceR&quot;,&quot;ggplot2&quot;,&quot;backports&quot;,&quot;rJava&quot;,&quot;rcdk&quot;,&quot;pls&quot;,&quot;randomForest&quot;,
+  &quot;gplots&quot;,&quot;curl&quot;,&quot;data.table&quot;,&quot;caret&quot;,&quot;ggfortify&quot;,&quot;tidyverse&quot;)
     
 for (i in requiredpackages) {
     if (!requireNamespace(i, quietly = TRUE))
-        BiocManager::install(i, ask = F, dependencies = TRUE)
+        BiocManager::install(i, ask = F, dependencies = c(&quot;Depends&quot;, &quot;Imports&quot;))
     require(as.character(i), character.only = TRUE)
     print(i)
 }
@@ -417,15 +417,12 @@ names(dataObj) = c(&quot;Comp&quot;,&quot;bp&quot;,&quot;CC&quot;)
 
 
 #-----------------------------------------------------------------------------------------------------#
-#                           TEST FILTER TO GET LINEAR ALKANES
+#       Block 03        FILTERS AND OUTLIER HANDLING
 #-----------------------------------------------------------------------------------------------------#
 if(linearAlkanesOnly == 1){
     dataObj = dataObj[-grep(pattern = &quot;\\(&quot;,x = dataObj$CC),]
 }
 
-#-----------------------------------------------------------------------------------------------------#
-#       Block 03        OUTLIER TESTING
-#-----------------------------------------------------------------------------------------------------#
 # hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
 dataObj$bp[dataObj$Comp==&quot;hexatriacontane&quot;] = 770.15
 
@@ -627,7 +624,7 @@ MAE.pls.test
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
     xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error test set&quot;)
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error test set (PLS model)&quot;)
     abline(0,1, col=&#39;red&#39;)
     text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.pls.test))
     text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.test))
@@ -648,7 +645,7 @@ MAE.pls.train
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
     xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error training set&quot;)
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error training set (PLS model)&quot;)
     abline(0,1, col=&#39;red&#39;)
     text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.pls.train))
     text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.train))
@@ -656,54 +653,63 @@ plot(yactual.train, ypredCARET.pls.train,
 #-----------------------------------------------------------------------------------------------------#
 #                           CARET : RF
 #-----------------------------------------------------------------------------------------------------#
+# Define training control method; 10 - k - cross validation
+train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
+
+# Train the model
+model &lt;- train(y~., data=data.train, trControl=train_control, method=&quot;rf&quot;)
+
+# Find out what model is best
+print(model)
+
+# Find out most important variables - BLOCKED - this doesnt work for rf
 if(F){
-    # Define training control method; 10 - k - cross validation
-    train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
+    Varimportance = varImp(model)
+    cat(paste(&quot;Best model fit with&quot;, model$bestTune, &quot;latent components \n&quot;))
+    cat(paste(&quot;Latent components:&quot;,paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = &quot;, &quot;),&quot;\n&quot;))
+    plot(Varimportance, main=&quot;Varible importance in rf model \n&quot;)
+}
+# Predict test set
+ypredCARET.rf.test &lt;- model %&gt;% predict(data.test)
 
-    # Train the model
-    model &lt;- train(y~., data=data.train, trControl=train_control, method=&quot;rf&quot;)
+# Root mean squared error
+RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
+RMSE.rf.test
+# Results in: 10.61
 
-    # Find out what model is best
-    print(model)
+# Mean absolute error
+MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
+MAE.rf.test
+# Results in: 10.00
 
-    # Find out most important variables
-    # plot(varImp(model))
-
-    # Predict test set
-    ypredCARET.rf.test &lt;- model %&gt;% predict(data.test)
-
-    # Root mean squared error
-    RMSE(yactual.test, ypredCARET.rf.test)
-    # Results in: 10.61
-
-    # Mean absolute error
-    MAE(yactual.test, ypredCARET.rf.test)
-    # Results in: 10.00
-
-    # Plot ypred vs yactual of test data
-    plot(yactual.test, ypredCARET.rf.test,
-         xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
-         pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+# Plot ypred vs yactual of test data
+plot(yactual.test, ypredCARET.rf.test,
+    xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error test set (RandomForest model)&quot;)
     abline(0,1, col=&#39;red&#39;)
+    text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.rf.test))
+    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.rf.test))
 
-    # Predict training data; check overfitting
-    ypredCARET.rf.train &lt;- model %&gt;% predict(data.train)
+# Predict training data; check overfitting
+ypredCARET.rf.train &lt;- model %&gt;% predict(data.train)
 
-    # Root mean squared error
-    RMSE(yactual.train, ypredCARET.rf.train)
-    # Results in: 13.60
+# Root mean squared error
+RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
+RMSE.rf.train
+# Results in: 13.60
 
-    # Mean absolute error
-    MAE(yactual.train, ypredCARET.rf.train)
-    # Results in: 10.26
+# Mean absolute error
+MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
+MAE.rf.train
+# Results in: 10.26
 
-    # Plot ypred vs yactual of training data
-    plot(yactual.train, ypredCARET.rf.train,
-         xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
-         pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+# Plot ypred vs yactual of training data
+plot(yactual.train, ypredCARET.rf.train,
+    xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error training set (RandomForest model)&quot;)
     abline(0,1, col=&#39;red&#39;)
-
-}</code></pre>
+    text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.rf.train))
+    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.rf.train))</code></pre>
 
 
 
