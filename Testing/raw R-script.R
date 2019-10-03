@@ -115,15 +115,12 @@ names(dataObj) = c("Comp","bp","CC")
 
 
 #-----------------------------------------------------------------------------------------------------#
-#							TEST FILTER TO GET LINEAR ALKANES
+#		Block 03		FILTERS AND OUTLIER HANDLING
 #-----------------------------------------------------------------------------------------------------#
 if(linearAlkanesOnly == 1){
 	dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
 }
 
-#-----------------------------------------------------------------------------------------------------#
-#		Block 03		OUTLIER TESTING
-#-----------------------------------------------------------------------------------------------------#
 # hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
 dataObj$bp[dataObj$Comp=="hexatriacontane"] = 770.15
 
@@ -325,7 +322,7 @@ MAE.pls.test
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
     xlab="Observed BP test set", ylab="Predicted BP test set",
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set")
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (PLS model)")
 	abline(0,1, col='red')
 	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.test))
 	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.test))
@@ -346,7 +343,7 @@ MAE.pls.train
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
     xlab="Observed BP train set", ylab="Predicted BP train set",
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set")
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set (PLS model)")
 	abline(0,1, col='red')
 	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.train))
 	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.train))
@@ -354,54 +351,64 @@ plot(yactual.train, ypredCARET.pls.train,
 #-----------------------------------------------------------------------------------------------------#
 #							CARET : RF
 #-----------------------------------------------------------------------------------------------------#
+# Define training control method; 10 - k - cross validation
+train_control <- trainControl(method="cv", number=10)
+
+# Train the model
+model <- train(y~., data=data.train, trControl=train_control, method="rf")
+
+# Find out what model is best
+print(model)
+
+# Find out most important variables - BLOCKED - this doesnt work for rf
 if(F){
-	# Define training control method; 10 - k - cross validation
-	train_control <- trainControl(method="cv", number=10)
-
-	# Train the model
-	model <- train(y~., data=data.train, trControl=train_control, method="rf")
-
-	# Find out what model is best
-	print(model)
-
-	# Find out most important variables
-	# plot(varImp(model))
-
-	# Predict test set
-	ypredCARET.rf.test <- model %>% predict(data.test)
-
-	# Root mean squared error
-	RMSE(yactual.test, ypredCARET.rf.test)
-	# Results in: 10.61
-
-	# Mean absolute error
-	MAE(yactual.test, ypredCARET.rf.test)
-	# Results in: 10.00
-
-	# Plot ypred vs yactual of test data
-	plot(yactual.test, ypredCARET.rf.test,
-		 xlab="Observed BP test set", ylab="Predicted BP test set",
-		 pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-	abline(0,1, col='red')
-
-	# Predict training data; check overfitting
-	ypredCARET.rf.train <- model %>% predict(data.train)
-
-	# Root mean squared error
-	RMSE(yactual.train, ypredCARET.rf.train)
-	# Results in: 13.60
-
-	# Mean absolute error
-	MAE(yactual.train, ypredCARET.rf.train)
-	# Results in: 10.26
-
-	# Plot ypred vs yactual of training data
-	plot(yactual.train, ypredCARET.rf.train,
-		 xlab="Observed BP train set", ylab="Predicted BP train set",
-		 pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-	abline(0,1, col='red')
-
+	Varimportance = varImp(model)
+	cat(paste("Best model fit with", model$bestTune, "latent components \n"))
+	cat(paste("Latent components:",paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = ", "),"\n"))
+	plot(Varimportance, main="Varible importance in rf model \n")
 }
+# Predict test set
+ypredCARET.rf.test <- model %>% predict(data.test)
+
+# Root mean squared error
+RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
+RMSE.rf.test
+# Results in: 10.61
+
+# Mean absolute error
+MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
+MAE.rf.test
+# Results in: 10.00
+
+# Plot ypred vs yactual of test data
+plot(yactual.test, ypredCARET.rf.test,
+    xlab="Observed BP test set", ylab="Predicted BP test set",
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (RandomForest model)")
+	abline(0,1, col='red')
+	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.rf.test))
+	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.rf.test))
+
+# Predict training data; check overfitting
+ypredCARET.rf.train <- model %>% predict(data.train)
+
+# Root mean squared error
+RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
+RMSE.rf.train
+# Results in: 13.60
+
+# Mean absolute error
+MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
+MAE.rf.train
+# Results in: 10.26
+
+# Plot ypred vs yactual of training data
+plot(yactual.train, ypredCARET.rf.train,
+    xlab="Observed BP train set", ylab="Predicted BP train set",
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set (RandomForest model)")
+	abline(0,1, col='red')
+	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.rf.train))
+	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.rf.train))
+
 
 
 
