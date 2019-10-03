@@ -26,12 +26,12 @@ if (!requireNamespace("BiocManager", quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages <-
-  c("WikidataQueryServiceR","ggplot2","rJava","rcdk","pls","e1071","guassprLinearl","randomForest",
-  "gplots","limma","ggfortify","curl","caret","tidyverse","crayon")
+  c("WikidataQueryServiceR","ggplot2","backports","rJava","rcdk","pls","randomForest",
+  "gplots","curl","data.table","caret","ggfortify","tidyverse")
 	
 for (i in requiredpackages) {
 	if (!requireNamespace(i, quietly = TRUE))
-		BiocManager::install(i, ask = F, dependencies = TRUE)
+		BiocManager::install(i, ask = F, dependencies = c("Depends", "Imports"))
 	require(as.character(i), character.only = TRUE)
 	print(i)
 }

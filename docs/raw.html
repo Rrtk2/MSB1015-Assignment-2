@@ -309,17 +309,16 @@ $(document).ready(function () {
 #
 # Author comment:
 #   Rick Reijnders
-#   Script version: 29-09-2019
+#   Script version: 03-10-2019
 
 # File description:
 #   Name
 #     raw R-script.R
 #
-#   Purpose
-#     
-#   Inputs
-#     
-rm(list=ls())
+  
+rm(list=ls()) # clean workspace
+
+
 #-----------------------------------------------------------------------------------------------------#
 #       Block 01        (Install &amp;) Load packages
 #-----------------------------------------------------------------------------------------------------#
@@ -329,8 +328,8 @@ if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
 
 # Insert all packages in requiredpackages
 requiredpackages &lt;-
-  c(&quot;WikidataQueryServiceR&quot;,&quot;ggplot2&quot;,&quot;rJava&quot;,&quot;rcdk&quot;,&quot;pls&quot;,&quot;e1071&quot;,&quot;neuralnet&quot;,&quot;randomForest&quot;,&quot;gplots&quot;,&quot;limma&quot;,&quot;ggfortify&quot;,
-    &quot;crayon&quot;)
+  c(&quot;WikidataQueryServiceR&quot;,&quot;ggplot2&quot;,&quot;rJava&quot;,&quot;rcdk&quot;,&quot;pls&quot;,&quot;e1071&quot;,&quot;guassprLinearl&quot;,&quot;randomForest&quot;,
+  &quot;gplots&quot;,&quot;limma&quot;,&quot;ggfortify&quot;,&quot;curl&quot;,&quot;caret&quot;,&quot;tidyverse&quot;,&quot;crayon&quot;)
     
 for (i in requiredpackages) {
     if (!requireNamespace(i, quietly = TRUE))
@@ -339,34 +338,24 @@ for (i in requiredpackages) {
     print(i)
 }
 
-# Set message styles
-Confirm.style &lt;- green 
-Warning.style &lt;- yellow 
-Error.style &lt;- red
-
-
-cat(Warning.style(&quot;Done running block 01\n&quot;))
-cat(Confirm.style(&quot;Starting...\n&quot;))
 
 #-----------------------------------------------------------------------------------------------------#
 #       Block 02        SETTINGS
 #-----------------------------------------------------------------------------------------------------#
 # General settings
 options(stringsAsFactors    = F)
-Verbose                     = 3     #0-3:   0= no feedback  1= prints results  2=prints results + feedback  3= prints all
 
 # Select 80% for train, 20% for test
 Randomfactor = 0.8
+linearAlkanesOnly = 0  # 1 = yes; 0 = no.
 
 # Setting seed to keep consistent results 
 set.seed(1)
 
-if(Verbose&gt;=3) cat(Warning.style(&quot;Done running block 02a\n&quot;))
 
 #-----------------------------------------------------------------------------------------------------#
 #       Block 03        FUNCTIONS
 #-----------------------------------------------------------------------------------------------------#
-
 # Root Mean Squared Error
 RMSE = function(yact, ypred){
   sqrt(mean((yact - ypred)^2))
@@ -396,6 +385,7 @@ query = &#39;SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
 
 dataObj = query_wikidata(query)
 
+
 #-----------------------------------------------------------------------------------------------------#
 #       Block 03        bp check ; to kelvin
 #-----------------------------------------------------------------------------------------------------#
@@ -403,16 +393,16 @@ dataObj = query_wikidata(query)
 # 0°C + 273.15 = 273,15K
 idC = which(dataObj$bpUnitLabel==&quot;degree Celsius&quot;)
 for( i in 1:length(idC)){
-dataObj[idC[i],]$bp = (dataObj[idC[i],]$bp + 273.15)
-dataObj[idC[i],]$bpUnitLabel = &quot;kelvin&quot;
+    dataObj[idC[i],]$bp = (dataObj[idC[i],]$bp + 273.15)
+    dataObj[idC[i],]$bpUnitLabel = &quot;kelvin&quot;
 }
 
 #F to Kelvin:
 # (0°F − 32) × 5/9 + 273.15 = 255,372K
 idF = which(dataObj$bpUnitLabel==&quot;degree Fahrenheit&quot;)
 for( i in 1:length(idF)){
-dataObj[idF[i],]$bp= (dataObj[idF[i],]$bp - 32) * (5/9) + 273.15
-dataObj[idF[i],]$bpUnitLabel = &quot;kelvin&quot;
+    dataObj[idF[i],]$bp= (dataObj[idF[i],]$bp - 32) * (5/9) + 273.15
+    dataObj[idF[i],]$bpUnitLabel = &quot;kelvin&quot;
 }
 
 #additional failsafe if other metrics than Celsius and Fahrenheit are added (other metrics are removed)
@@ -424,11 +414,14 @@ dataObjBACKUP = dataObj
 # Finalize data structure
 dataObj = data.frame(dataObjBACKUP$compLabel, dataObjBACKUP$bp, dataObjBACKUP$CC)
 names(dataObj) = c(&quot;Comp&quot;,&quot;bp&quot;,&quot;CC&quot;)
+
+
 #-----------------------------------------------------------------------------------------------------#
 #                           TEST FILTER TO GET LINEAR ALKANES
 #-----------------------------------------------------------------------------------------------------#
-
-dataObj = dataObj[-grep(pattern = &quot;\\(&quot;,x = dataObj$CC),]
+if(linearAlkanesOnly == 1){
+    dataObj = dataObj[-grep(pattern = &quot;\\(&quot;,x = dataObj$CC),]
+}
 
 #-----------------------------------------------------------------------------------------------------#
 #       Block 03        OUTLIER TESTING
@@ -439,8 +432,9 @@ dataObj$bp[dataObj$Comp==&quot;hexatriacontane&quot;] = 770.15
 # Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k
 dataObj$bp[dataObj$Comp==&quot;Dooctacontane&quot;] = 958.05
 
+
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        DATA VISZ
+#       Block 03        DATA VIZ
 #-----------------------------------------------------------------------------------------------------#
 # Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
 CClength_crude = nchar(gsub(pattern = &quot;\\)&quot;,replacement = &quot;&quot;,x = gsub(pattern = &quot;\\(&quot;,replacement = &quot;&quot;,x = dataObj$CC)))
@@ -448,16 +442,14 @@ plotCClength = CClength_crude[order(CClength_crude)]
 BPplot = dataObj$bp[order(CClength_crude)]
 
 # Should result in a exponential function-like graph
-plot(plotCClength,BPplot)
+plot(plotCClength,BPplot,main = &quot;Carbon - boilingpoint relation&quot;,xlab = &quot;Amount of carbon atoms in alkene&quot;,ylab = &quot;Boiling point (Kelvin)&quot;)
 
-
-
-
+# Show how the data is distributed (focussing on bp)
+hist(dataObj$bp,breaks=20,main = &quot;Boiling point frequency distribution&quot;,xlab = &quot;Boiling point (Kelvin)&quot;,ylab = &quot;Frequency&quot;)
 
 #-----------------------------------------------------------------------------------------------------#
 #       Block 03        rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
 #-----------------------------------------------------------------------------------------------------#
-
 sp &lt;- get.smiles.parser()
 dc &lt;- get.desc.categories()
 
@@ -512,22 +504,20 @@ descs = mydata[,-1]
 descs &lt;- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
 descs &lt;- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
 
-# Correlate the descriptors with the boiling point; if these are linked, they should add some info
-corMatrix = cor(descs , dataObj$bp)
-corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
+if(T){
+    # Correlate the descriptors with the boiling point; if these are linked, they should add some info
+    corMatrix = cor(descs , dataObj$bp)
+    corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
 
-# select first 15 components:
-componentNames = rownames(corMatrix)[1:15]
-descs = descs[,match(colnames(descs), x = componentNames)]
+    # select first 15 components:
+    componentNames = rownames(corMatrix)[1:15]
+    descs = descs[,match(colnames(descs), x = componentNames)]
+}
 
-
-
-# Old method, keepin this inside for further reference
+# - BLOCKED - Old method, keepin this inside for further reference 
 if(F){
     mydata = mydataBACKUP
-
     descs = mydata[,-1]
-
 
     # crude way to extract &#39;important&#39; features based on correlation
     descs &lt;- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
@@ -536,6 +526,7 @@ if(F){
     r2 &lt;- r2[ r2[,1] &gt; r2[,2] , ]
     descs &lt;- descs[, -unique(r2[,2])]
 }
+# - BLOCKED -
 
 # should contain nAtomLAC; the amount of c atoms
 if(!exists(&quot;descs$nAtomLAC&quot;)){
@@ -546,257 +537,173 @@ if(!exists(&quot;descs$nAtomLAC&quot;)){
     names(descs)[names(descs)==&quot;descs$nAtomLAC&quot;] = &quot;n&quot;
 }
 
-# add parameters from paper!
-
-#descs$w = 1/6*(descs$n-1)*(descs$n)*(descs$n+1)
-#descs$p = descs$n - 3
-# the folowing screw up the analysis:
-#descs$A = 98/descs$n^2 * descs$w
-#descs$B = 5.5*descs$p
-
-# store resulting input file in my_data; as it is used everywhere
+# Store resulting input file in my_data; as it is used everywhere
 my_data = descs
 
-#-----------------------------------------------------------------------------
-#Finish prepare data
-#-----------------------------------------------------------------------------
+# Finish prepare data
 # Add and define the &#39;to be predicted&#39; column
 n_col &lt;- ncol(my_data)
 BoilPoint = n_col+1
 my_data[,BoilPoint] = dataObj$bp
 names(my_data)[BoilPoint] = &#39;BoilPoint&#39;
 
+# Ordered data is required later
+my_data = my_data[order(my_data$BoilPoint),]
 
 
 #-----------------------------------------------------------------------------------------------------#
-#                           MACHINE LEARINGN
+#                           MACHINE LEARNING
 #-----------------------------------------------------------------------------------------------------#
-
 #-----------------------------------------------------------------------------------------------------#
 #               Data subsetting; Train; Test
 #-----------------------------------------------------------------------------------------------------#
-# ceiling(dim(my_data)[1]0.8)
-#make data objects
-samples.upper = sample(length(my_data[,1]), floor(length(my_data[,1])*Randomfactor))  #get all unique samples (not frequecies) and sample 80%
+# Define variables 
+sample.length = length(my_data[,1])
+
+# Higher probability to select lower (underrepresented) samples; 
+# improves range of model, increases fit and prediction power.
+# Ranges from 1 (select) to 0.5 (chance)
+sample.biasprob = 1 - 1:sample.length /max(sample.length )/2 
+
+# Make data objects
+samples.upper = sample(sample.length , floor(length(my_data[,1])*Randomfactor),prob = sample.biasprob ) #get all unique samples (not frequecies) and sample 80%
+#plot(samples.upper[order(samples.upper)])
 samples.total = (1:length(my_data[,1])) # all unique samples (not frequecies)
 samples.lowerl = samples.total[!samples.total %in% samples.upper]  #which samples are sampled
-data.train = my_data[samples.upper,]#contains all upper logical
+
+# Subset data
+data.train = my_data[samples.upper,]#contains all upper 
 data.train = as.data.frame(data.train)
-
-#data.train = t(data.train)
-data.test = my_data[samples.lowerl,]#contains all lower logical
+data.test = my_data[samples.lowerl,]#contains all lower 
 data.test = as.data.frame(data.test)
-#data.test = t(data.test)
 
-# NOTE: annotations are within location [,32007]
-data.train[,BoilPoint] = data.train[,BoilPoint]
-data.test[,BoilPoint] = data.test[,BoilPoint]
-
-#remove nas
+# Remove nas
 data.train=data.train[!is.na(data.train[,1]),]
 data.test=data.test[!is.na(data.test[,1]),]
-set.seed(123)
 
-
+# Create standardized object
 xNN = data.train[,-(BoilPoint)]
 yNN = data.train[,BoilPoint]
-
 dat = data.frame(xNN, y = yNN)
-#yactual = data.test[,BoilPoint]
-yactual.test = data.test[,BoilPoint]
-yactual.train = data.train[,BoilPoint]
+
+# Remove samples with in datasets n &lt; 1
+data.train = dat[dat$n&gt;0,]
+yactual.train = data.train$y
+data.test = data.test[data.test$n&gt;0,]
+yactual.test = data.test$BoilPoint
+
 
 #-----------------------------------------------------------------------------------------------------#
-#                           PLS MODEL VALIDATION NOT RUNNING ATM!
+#                           CARET : pls
 #-----------------------------------------------------------------------------------------------------#
-#NOT RUNNING ATM! 
+# Define training control method; 10 - k - cross validation
+train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
+
+# Train the model
+model &lt;- train(y~., data=data.train, trControl=train_control, method=&quot;pls&quot;)
+
+# Find out what model is best
+print(model)
+
+# Find out most important variables
+Varimportance = varImp(model)
+cat(paste(&quot;Best model fit with&quot;, model$bestTune, &quot;latent components \n&quot;))
+cat(paste(&quot;Latent components:&quot;,paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = &quot;, &quot;),&quot;\n&quot;))
+plot(Varimportance, main=&quot;Varible importance in PLS model \n&quot;)
+
+# Predict test set
+ypredCARET.pls.test &lt;- model %&gt;% predict(data.test)
+
+# Root mean squared error
+RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
+RMSE.pls.test
+# Results in: 10.61
+
+# Mean absolute error
+MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
+MAE.pls.test
+# Results in: 10.00
+
+# Plot ypred vs yactual of test data
+plot(yactual.test, ypredCARET.pls.test,
+    xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error test set&quot;)
+    abline(0,1, col=&#39;red&#39;)
+    text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.pls.test))
+    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.test))
+
+# Predict training data; check overfitting
+ypredCARET.pls.train &lt;- model %&gt;% predict(data.train)
+
+# Root mean squared error
+RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
+RMSE.pls.train
+# Results in: 13.60
+
+# Mean absolute error
+MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
+MAE.pls.train
+# Results in: 10.26
+
+# Plot ypred vs yactual of training data
+plot(yactual.train, ypredCARET.pls.train,
+    xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error training set&quot;)
+    abline(0,1, col=&#39;red&#39;)
+    text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.pls.train))
+    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.train))
+
+#-----------------------------------------------------------------------------------------------------#
+#                           CARET : RF
+#-----------------------------------------------------------------------------------------------------#
 if(F){
+    # Define training control method; 10 - k - cross validation
+    train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
 
-# so the model from the paper https://pubs.acs.org/doi/abs/10.1021/ja01193a005 is:
-# tB = aw + bp + c
-# a = constant
-# b = constant
-# c = constant
-# p = polarity number
-# w = sum of dist; number of carbonatoms to left multiply by remaining right; use all bounds
+    # Train the model
+    model &lt;- train(y~., data=data.train, trControl=train_control, method=&quot;rf&quot;)
 
-# resulted formula:  t = 98/n^2 * w + 5.5*p
-# w = 1/6*(n-1)*(n)*(n+1)
-# p = n - 3
+    # Find out what model is best
+    print(model)
 
-# Rephrased formula:  t = A + B
-# A = 98/n^2 * w
-# B = 5.5*p
-# w = 1/6*(n-1)*(n)*(n+1)
-# p = n - 3
+    # Find out most important variables
+    # plot(varImp(model))
 
+    # Predict test set
+    ypredCARET.rf.test &lt;- model %&gt;% predict(data.test)
 
-datPLS = dat
-datPLS$w = 1/6*(datPLS$n-1)*(datPLS$n)*(datPLS$n+1)
-datPLS$p = datPLS$n - 3
-datPLS$A = 98/datPLS$n^2 * datPLS$w
-datPLS$B = 5.5*datPLS$p
+    # Root mean squared error
+    RMSE(yactual.test, ypredCARET.rf.test)
+    # Results in: 10.61
 
-data.testPLS = data.test
-data.testPLS$w = 1/6*(data.test$n-1)*(data.test$n)*(data.test$n+1)
-data.testPLS$p = data.test$n - 3
-data.testPLS$A = 98/data.testPLS$n^2 * data.testPLS$w
-data.testPLS$B = 5.5*data.testPLS$p
+    # Mean absolute error
+    MAE(yactual.test, ypredCARET.rf.test)
+    # Results in: 10.00
 
-# PLS MODEL
-PLSfit = plsr(y ~ A + B, data = datPLS, validation = &quot;LOO&quot;)
+    # Plot ypred vs yactual of test data
+    plot(yactual.test, ypredCARET.rf.test,
+         xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
+         pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+    abline(0,1, col=&#39;red&#39;)
 
+    # Predict training data; check overfitting
+    ypredCARET.rf.train &lt;- model %&gt;% predict(data.train)
 
-# Select amount of components
-ncomp.onesigma &lt;- selectNcomp(PLSfit, method = &quot;onesigma&quot;, plot = TRUE)
-ncomp.permut &lt;- selectNcomp(PLSfit, method = &quot;randomization&quot;, plot = TRUE)
+    # Root mean squared error
+    RMSE(yactual.train, ypredCARET.rf.train)
+    # Results in: 13.60
 
-# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = datPLS, validation = &quot;LOO&quot;)
+    # Mean absolute error
+    MAE(yactual.train, ypredCARET.rf.train)
+    # Results in: 10.26
 
-#so put data.predicted and actual data.test together
-ypredPLS = predict(PLSfit, as.data.frame(data.testPLS[,-(BoilPoint)]),type=&quot;response&quot;)
+    # Plot ypred vs yactual of training data
+    plot(yactual.train, ypredCARET.rf.train,
+         xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
+         pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
+    abline(0,1, col=&#39;red&#39;)
 
-# Root mean squared error
-RMSE(yactual, ypredPLS)
-#   Results in: 53.59
-
-# Mean absolute error
-MAE(yactual, ypredPLS)
-#   Results in: 39.25
-
-}
-
-#-----------------------------------------------------------------------------------------------------#
-#                           Linear Regression (exponential)
-#-----------------------------------------------------------------------------------------------------#
-
-# Glm! uses the 15 components 
-GLMfit = glm(y ~ ., dat,family = Gamma(link=&quot;log&quot;))
-
-#so put data.predicted and actual data.test together
-ypredGLM.test = predict(GLMfit, as.data.frame(data.test[,-(BoilPoint)]),type=&quot;response&quot;)
-
-
-# Root mean squared error
-RMSE(yactual.test, ypredGLM.test)
-#   Results in: 36.76
-
-# Mean absolute error
-MAE(yactual.test, ypredGLM.test)
-#   Results in: 22.11
-
-plot(yactual.test, ypredGLM.test,
-     xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col=&#39;red&#39;)
-
-
-
-### Train set; over/underfitting ###
-ypredGLM.train = predict(GLMfit, as.data.frame(data.train[,-(BoilPoint)]),type=&quot;response&quot;)
-yactual.train = data.train[,BoilPoint]
-
-# Root mean squared error
-RMSE(data.train[,(BoilPoint)], ypredGLM.train)
-#   Results in: 23.32
-
-# Mean absolute error
-MAE(data.train[,(BoilPoint)], ypredGLM.train)
-#   Results in: 7.844
-
-plot(yactual.train, ypredGLM.train,
-     xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col=&#39;red&#39;)
-
-
-#-----------------------------------------------------------------------------------------------------#
-#                           Linear Regression
-#-----------------------------------------------------------------------------------------------------#
-
-
-# S3 method for formula
-PLSfit = plsr(y ~ ., data = dat,family = Gamma(link=&quot;log&quot;), validation = &quot;LOO&quot;)
-
-# Select amount of components
-ncomp.onesigma &lt;- selectNcomp(PLSfit, method = &quot;onesigma&quot;, plot = TRUE)
-ncomp.permut &lt;- selectNcomp(PLSfit, method = &quot;randomization&quot;, plot = TRUE)
-
-# If methods doubt between 5 or 7 components, take the highest rounded mean (6).
-PLSfit = plsr(y ~ ., ncomp = ceiling(mean(ncomp.onesigma,ncomp.permut)), data = dat, validation = &quot;LOO&quot;)
-
-#so put data.predicted and actual data.test together
-ypredPLS.test = predict(PLSfit, as.data.frame(data.test[,-(BoilPoint)]),type=&quot;response&quot;)
-
-# Root mean squared error
-RMSE(yactual.test, ypredPLS.test)
-#   Results in: 53.59
-
-# Mean absolute error
-MAE(yactual.test, ypredPLS.test)
-#   Results in: 39.25
-
-
-plot(yactual.test, ypredPLS.test[,,dim(ypredPLS.test)[3]],
-     xlab=&quot;Observed BP test set&quot;, ylab=&quot;Predicted BP test set&quot;,
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col=&#39;red&#39;)
-
-
-### Train set; over/underfitting ###
-
-#so put data.predicted and actual data.test together
-ypredPLS.train = predict(PLSfit, as.data.frame(data.train[,-(BoilPoint)]),type=&quot;response&quot;)
-
-# Root mean squared error
-RMSE(yactual.train, ypredPLS.train)
-#   Results in: 53.59
-
-# Mean absolute error
-MAE(yactual.train, ypredPLS.train)
-#   Results in: 39.25
-
-
-plot(yactual.train, ypredPLS.train[,,dim(ypredPLS.train)[3]],
-     xlab=&quot;Observed BP train set&quot;, ylab=&quot;Predicted BP train set&quot;,
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col=&#39;red&#39;)
-
-
-#-----------------------------------------------------------------------------------------------------#
-#                                       RF
-#-----------------------------------------------------------------------------------------------------#
-
-
-prot.rf &lt;- randomForest(y ~ ., importance=TRUE, proximity=TRUE,data=dat, ntree=200)
-
-# after building the random forest, now we apply it on the test dataset
-ypredRF.test &lt;- predict(prot.rf, data.test[,-(BoilPoint)])
-
-
-# Root mean squared error
-RMSE(yactual.test, ypredRF.test)
-#   Results in: 20.26
-
-# Mean absolute error
-MAE(yactual.test, ypredRF.test)
-#   Results in: 7.63
-
-
-
-
-# after building the random forest, now we apply it on the test dataset
-ypredRF.train &lt;- predict(prot.rf, data.train[,-(BoilPoint)])
-
-
-# Root mean squared error
-RMSE(yactual.train, ypredRF.train)
-#   Results in: 20.26
-
-# Mean absolute error
-MAE(yactual.train, ypredRF.train)
-#   Results in: 7.63</code></pre>
+}</code></pre>
 
 
 
