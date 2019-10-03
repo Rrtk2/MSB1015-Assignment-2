@@ -306,12 +306,24 @@ $(document).ready(function () {
 </div>
 <div id="workflow" class="section level2">
 <h2>Workflow</h2>
-<p>Data extraction from wikidata (alkene name, smiles, boiling point).</p>
-<p>Data expansion and cleanup (using rcdk).</p>
-<p>Apply machine learing techniques using the expanded data, to predict boiling point (glm, plsr, randomForest).</p>
-<p>Compare results.</p>
+<p>The folowing workflow is applied, coherent to the script blocks:</p>
+<ol style="list-style-type: decimal">
+<li><p>Install packages</p></li>
+<li><p>Define user settings</p></li>
+<li><p>Set user functions</p></li>
+<li><p>Define WikiData query call &amp; extract data</p></li>
+<li><p>Convert units to Kelvin</p></li>
+<li><p>(Optional) filtering and data cleanup</p></li>
+<li><p>Visualize raw data</p></li>
+<li><p>Data enrichment (using rcdk)</p></li>
+<li><p>Latent variable filtering</p></li>
+<li><p>Data subsetting for machine learning</p></li>
+<li><p>Machine learning (PLS model)</p></li>
+<li><p>Machine learning (RandomForest model)</p></li>
+</ol>
 <div id="script-block-1-install-packages" class="section level4">
 <h4>Script block 1: INSTALL PACKAGES</h4>
+<p>This block installs all packages which are required during this algorithm. It iteravely checks if they are installed, installs if needed, and load them afterward.</p>
 <pre class="r"><code>    # Install packages if needed and load, or just load packages
     if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
       install.packages(&quot;BiocManager&quot;, ask = F)
@@ -327,96 +339,23 @@ $(document).ready(function () {
         require(as.character(i), character.only = TRUE)
         print(i)
     }</code></pre>
-<pre><code>## Loading required package: WikidataQueryServiceR</code></pre>
-<pre><code>## Warning: package &#39;WikidataQueryServiceR&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;WikidataQueryServiceR&quot;</code></pre>
-<pre><code>## Loading required package: ggplot2</code></pre>
-<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;ggplot2&quot;</code></pre>
-<pre><code>## Loading required package: backports</code></pre>
-<pre><code>## Warning: package &#39;backports&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;backports&quot;</code></pre>
-<pre><code>## Loading required package: rJava</code></pre>
-<pre><code>## Warning: package &#39;rJava&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;rJava&quot;</code></pre>
-<pre><code>## Loading required package: rcdk</code></pre>
-<pre><code>## Warning: package &#39;rcdk&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Loading required package: rcdklibs</code></pre>
-<pre><code>## Warning: package &#39;rcdklibs&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;rcdk&quot;</code></pre>
-<pre><code>## Loading required package: pls</code></pre>
-<pre><code>## 
-## Attaching package: &#39;pls&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:stats&#39;:
-## 
-##     loadings</code></pre>
-<pre><code>## [1] &quot;pls&quot;</code></pre>
-<pre><code>## Loading required package: randomForest</code></pre>
-<pre><code>## Warning: package &#39;randomForest&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## randomForest 4.6-14</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: &#39;randomForest&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:ggplot2&#39;:
-## 
-##     margin</code></pre>
-<pre><code>## [1] &quot;randomForest&quot;</code></pre>
-<pre><code>## Loading required package: gplots</code></pre>
-<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## 
-## Attaching package: &#39;gplots&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:stats&#39;:
-## 
-##     lowess</code></pre>
-<pre><code>## [1] &quot;gplots&quot;</code></pre>
-<pre><code>## Loading required package: curl</code></pre>
-<pre><code>## Warning: package &#39;curl&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;curl&quot;</code></pre>
-<pre><code>## Loading required package: data.table</code></pre>
-<pre><code>## Warning: package &#39;data.table&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## data.table 1.12.2 using 6 threads (see ?getDTthreads).  Latest news: r-datatable.com</code></pre>
-<pre><code>## [1] &quot;data.table&quot;</code></pre>
-<pre><code>## Loading required package: caret</code></pre>
-<pre><code>## Warning: package &#39;caret&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Loading required package: lattice</code></pre>
-<pre><code>## 
-## Attaching package: &#39;caret&#39;</code></pre>
-<pre><code>## The following object is masked from &#39;package:pls&#39;:
-## 
-##     R2</code></pre>
-<pre><code>## [1] &quot;caret&quot;</code></pre>
-<pre><code>## Loading required package: ggfortify</code></pre>
-<pre><code>## Warning: package &#39;ggfortify&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## [1] &quot;ggfortify&quot;</code></pre>
-<pre><code>## Loading required package: tidyverse</code></pre>
-<pre><code>## Warning: package &#39;tidyverse&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## -- Attaching packages --------------------------------------- tidyverse 1.2.1 --</code></pre>
-<pre><code>## v tibble  2.1.3     v purrr   0.3.2
-## v tidyr   1.0.0     v dplyr   0.8.3
-## v readr   1.3.1     v stringr 1.4.0
-## v tibble  2.1.3     v forcats 0.4.0</code></pre>
-<pre><code>## Warning: package &#39;tibble&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;tidyr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;readr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;purrr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;forcats&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
-## x dplyr::between()       masks data.table::between()
-## x dplyr::combine()       masks randomForest::combine()
-## x dplyr::filter()        masks stats::filter()
-## x dplyr::first()         masks data.table::first()
-## x dplyr::lag()           masks stats::lag()
-## x dplyr::last()          masks data.table::last()
-## x purrr::lift()          masks caret::lift()
-## x randomForest::margin() masks ggplot2::margin()
-## x dplyr::matches()       masks tidyr::matches(), rcdk::matches()
-## x readr::parse_date()    masks curl::parse_date()
-## x purrr::transpose()     masks data.table::transpose()</code></pre>
-<pre><code>## [1] &quot;tidyverse&quot;</code></pre>
+<pre><code>## [1] &quot;WikidataQueryServiceR&quot;
+## [1] &quot;ggplot2&quot;
+## [1] &quot;backports&quot;
+## [1] &quot;rJava&quot;
+## [1] &quot;rcdk&quot;
+## [1] &quot;pls&quot;
+## [1] &quot;randomForest&quot;
+## [1] &quot;gplots&quot;
+## [1] &quot;curl&quot;
+## [1] &quot;data.table&quot;
+## [1] &quot;caret&quot;
+## [1] &quot;ggfortify&quot;
+## [1] &quot;tidyverse&quot;</code></pre>
 </div>
 <div id="script-block-2-settings" class="section level4">
 <h4>Script block 2: SETTINGS</h4>
+<p>In this script some parameters can be changed, these are located in this block. This way changing parameters is easy and robust.</p>
 <pre class="r"><code>    # General settings
     options(stringsAsFactors    = F)
 
@@ -429,6 +368,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-3-functions" class="section level4">
 <h4>Script block 3: FUNCTIONS</h4>
+<p>To assess the performance of the models at later hand, these functions have been made. The Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE) are often used to compare models of similar function.</p>
 <pre class="r"><code>    # Root Mean Squared Error
     RMSE = function(yact, ypred){
       sqrt(mean((yact - ypred)^2))
@@ -441,6 +381,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-4-query-call" class="section level4">
 <h4>Script block 4: QUERY CALL</h4>
+<p>This block gets the data from WikiData. As stated before, the goal is to extract boiling points from alkenes. This query call extracts the following pieces of information: unique alkene name, boiling point, boiling point unit and concatenated smiles. It is essential the concatenated smiles are extracted, as these will be used later to enrich the data. All this information is stored in a dataframe called ‘dataObj’.</p>
 <pre class="r"><code>    endpoint = &quot;https://query.wikidata.org/bigdata/namespace/wdq/sparql&quot;
 
     query = &#39;SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
@@ -459,6 +400,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-5-boilingpoint-unit-conversion" class="section level4">
 <h4>Script block 5: BOILINGPOINT UNIT CONVERSION</h4>
+<p>As the query extracts <em>all</em> boiling points, sevceral different units might be used for a single alkene. Thus, these need to be checked and converted to Kelvin, as this is a international unit. However, during the development of this script only two other units were found, Celsius and Fahrenheit. This means when another unit is introduced, the algorithm cannot detect it and will use this unit as outlier. To overcome this, after conversion all the samples containing a ‘Kelvin’ unit will be used, while others are removed from the dataset. Finally, ‘dataObj’ is subsetted to contain the alkene name, boiling point and concatenated smiles.</p>
 <pre class="r"><code>    #C to Kelvin:
     # 0°C + 273.15 = 273,15K
     idC = which(dataObj$bpUnitLabel==&quot;degree Celsius&quot;)
@@ -487,6 +429,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-6-filters-and-outlier-handling" class="section level4">
 <h4>Script block 6: FILTERS AND OUTLIER HANDLING</h4>
+<p>The extracted data can be filtered on linear alkenes only (no branches), this can be changed in settings. It simplifies the model as it does not need to take the branching in account. After evaluation of the data (which happens in block 7) it was observed two alkenes deviated from the observable trend line. This was because one alkene (hexatriacontane) contained boiling point data under pressurised condition, altering the boiling point compared to the rest. The second alkene (Dooctacontane) has a lower boiling point temperature for no clear reason; when looking this up in <a href="http://www.chemspider.com/Chemical-Structure.455910.html">ChemSpider</a>, it is observed the boiling point is 684.9±18.0 °C while WikiData states 608.7 °C. The two alkanes are locally corrected as these need looking in to.</p>
 <pre class="r"><code>    if(linearAlkanesOnly == 1){
         dataObj = dataObj[-grep(pattern = &quot;\\(&quot;,x = dataObj$CC),]
     }
@@ -499,6 +442,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-7-data-overview" class="section level4">
 <h4>Script block 7: DATA OVERVIEW</h4>
+<p>After correction / filtering the data, it is visualized in this block. It indicates a exponentional relationship between boiling point and length of the alkene (based on the carbon atom backbone). This is a indication that a ‘simple’ model should be able to pick up the variables involved to determine the boiling point. The histogram indicates the boiling point frequency distribution, ideally, this would be normally distributed. It can be observed that it is <em>not</em> normally distributedl; and should be taken in account.</p>
 <pre class="r"><code>    # Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
     CClength_crude = nchar(gsub(pattern = &quot;\\)&quot;,replacement = &quot;&quot;,x = gsub(pattern = &quot;\\(&quot;,replacement = &quot;&quot;,x = dataObj$CC)))
     plotCClength = CClength_crude[order(CClength_crude)]
@@ -513,6 +457,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-8-data-enrichment" class="section level4">
 <h4>Script block 8: DATA ENRICHMENT</h4>
+<p>To build a model, variables are required to reflect the selected molecule. Several aspects can be derived from the concatenated smiles directly, such as the amount of (C)arbon and (H)ydrogen atoms. However, when looking into molecules many more things can be stated, such as electronegativity or 3d-structure. The <a href="https://cran.r-project.org/web/packages/rcdk/index.html">RCDK package</a> in R uses concatenated smiles to determine several molecular descriptors. This information can be stored in a data frame per alkene molecule, which becomes the input for machine learing. This is possible as the output <em>y</em> (boiling point) is extracted from WikiData, and variables <em>v(1)..v(n)</em> are the obtained molecular descriptors. This dataframe is called ‘descs’, containing many variables.</p>
 <pre class="r"><code>    sp &lt;- get.smiles.parser()
     dc &lt;- get.desc.categories()
 
@@ -561,6 +506,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-9-latent-variable-filter" class="section level4">
 <h4>Script block 9: LATENT VARIABLE FILTER</h4>
+<p>Because ‘descs’ contains many variables, the <em>curse of dimensionality</em> is a phenomena stating the amount of variables is bigger than the amount of samples, leading to infinite results (cannot predict). To account for this several (crude) steps are taken, first all columns containing NAs are removed. Second, the descriptors are correlated with the boiling point to indicate correlated varibles. At last, the top 15 (abs) correlating variables are selected and kept while all other variables are removed. As there are around 130 samples and 15 variables, a prediction is possible. A dataframe called ‘my_data’ is created containing: the amount of carbons in the backbone <em>n</em>, the 15 top correlated variables <em>v(1..15)</em> and the expected output <em>y</em>.</p>
 <pre class="r"><code># Remove NAs n stuff
     descs &lt;- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
     descs &lt;- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
@@ -613,6 +559,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-10-data-subsetting-for-machine-learning" class="section level4">
 <h4>Script block 10: DATA SUBSETTING FOR MACHINE LEARNING</h4>
+<p>To create robust (machine learning) models several aspects need to be accounted for. Overfitting is the proces of fitting the model perfectly to <em>this</em> dataset, while another dataset might not fit that well. A balance must be struck between robustness and minimal error. This is why the dataset is split into a training and test set, by evaluating the model performance on both sets, the overfitting and robustness van be evaluated. This block of code splits the data in a test and training set, using a density-biased random sampling approach. As stated before, the samples are not uniformly distributed, thus, a random sampling approach <em>will</em> select more samples with higher boiling points, shifing the model focus to higher boiling points rather than uniform.</p>
 <pre class="r"><code>    # Define variables 
     sample.length = length(my_data[,1])
 
@@ -650,6 +597,7 @@ $(document).ready(function () {
 </div>
 <div id="script-block-11-pls-model" class="section level4">
 <h4>Script block 11: PLS MODEL</h4>
+<p>A PLS model was created using the <a href="http://topepo.github.io/caret/index.html">Caret</a> package in R, which is a framework for a variarity of machine learning approaches. (10) k-fold cross validataion was applied to increase the model performance as it estimates the best latent variables which should be used. When evaluating the model’s performance, RMSE and MAE is used in addition to a predict vs actual plot. These are calculated for training and test set, to indicate robustness and overfitting.</p>
 <pre class="r"><code>    # Define training control method; 10 - k - cross validation
     train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
 
@@ -730,8 +678,18 @@ $(document).ready(function () {
         text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.train))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-11-3.png" width="672" /></p>
 </div>
+<div id="evaluation-of-pls-model" class="section level4">
+<h4>Evaluation of PLS model</h4>
+<p>The 10-fold cross-validated PLS model used 3 latent variables (VAdjMat, Kier1, khs.ssCH2) to estimate the boiling point within 16 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be <em>16 / (1100 - 200) x 100 =</em> 1.8%.</p>
+<p>It can be observed the test RMSE is 16.09 and MAE 14.97; training RMSE is 19.94 and MAE 14.84.</p>
+<p>If overfitting did happen, the training error would be significanly lower than the test error, which is not the case.</p>
+<p>However, the training error is higher than the test error, indicating the model fits the test dataset better. This is logical as the training set has many more points than the test set, creating the possibility to gain more error in the training set.</p>
+<p>The MAE is very comparable, indicative of no under- or overfitting.</p>
+<p>By examinating the plots and comparing the direction of error, it can be seen as the model balances the prediction; underestimating at first, then overestimating, then underestimating and at last overestimating. This might be induced by nonlinear effects which are not fully captured in the selected variables.</p>
+</div>
 <div id="script-block-12-random-forest-model" class="section level4">
 <h4>Script block 12: RANDOM FOREST MODEL</h4>
+<p>As the caret package includes many different machine learing methods, a random forest model has been included. Random forest has been chosen as this method has been proven powerfull and can capture liner as well as nonliner effects. It can be observed the Random forest model’s performance is better than the PLS model. However, both models can be improved by tuning the parameters and obtaining better molecular descriptors.</p>
 <pre class="r"><code>    # Define training control method; 10 - k - cross validation
     train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
 
@@ -811,10 +769,12 @@ $(document).ready(function () {
         text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.rf.train))</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-12-2.png" width="672" /></p>
 </div>
-<div id="script-block-13" class="section level4">
-<h4>Script block 13:</h4>
-<pre class="r"><code>print(&quot;the end&quot;)</code></pre>
-<pre><code>## [1] &quot;the end&quot;</code></pre>
+<div id="evaluation-of-randomforest-model" class="section level4">
+<h4>Evaluation of RandomForest model</h4>
+<p>The 10-fold cross-validated RandomForest model used 9 predictors to estimate the boiling point within 8.3 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be <em>8.3 / (1100 - 200) x 100 =</em> 0.9%.</p>
+<p>It can be observed the test RMSE is 8.30 and MAE 5.25; training RMSE is 7.61 and MAE 3.79.</p>
+<p>If overfitting did happen, the training error would be significanly lower than the test error. Comparing the RMSE and MAE indicates slight overfitting.</p>
+<p>By examinating the plots and comparing the direction of error, it can be seen this prediction seems spot on with tlight uniform error. Comparing this model to the PLS model a clear difference can be seen, which is likely caused by the nonlinear predictive power of random forest.</p>
 </div>
 </div>
 
