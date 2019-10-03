@@ -1,0 +1,477 @@
+---
+title: "Prediction of boiling points using WikiData and Machine learning techniques"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This GitHub Page is a final product of assignment 2, requested by the course MSB1015 (Scientific Programming). The goal is to create a GitHub Page (notebook) for the following analysis. The boiling points of alkenes need to be predicted based on data from WikiData; Smiles are used to enrich the data using the rcdk package in R, afterward, machine learning is applied. See the [GitHub repository](https://github.com/Rrtk2/MSB1015-Assignment-2) for more details.
+
+## Workflow
+The folowing workflow is applied, coherent to the script blocks:
+
+1) Install packages
+
+2) Define user settings
+
+3) Set user functions
+
+4) Define WikiData query call & extract data
+
+5) Convert units to Kelvin
+
+6) (Optional) filtering and data cleanup
+
+7) Visualize raw data 
+
+8) Data enrichment (using rcdk)
+
+9) Latent variable filtering
+
+10) Data subsetting for machine learning
+
+11) Machine learning (PLS model)
+
+12) Machine learning (RandomForest model)
+
+
+
+#### Script block 1: INSTALL PACKAGES
+This block installs all packages which are required during this algorithm. It iteravely checks if they are installed, installs if needed, and load them afterward. 
+```{r}
+	# Install packages if needed and load, or just load packages
+	if (!requireNamespace("BiocManager", quietly = TRUE))
+	  install.packages("BiocManager", ask = F)
+
+	# Insert all packages in requiredpackages
+	requiredpackages <-
+	  c("WikidataQueryServiceR","ggplot2","backports","rJava","rcdk","pls","randomForest",
+	  "gplots","curl","data.table","caret","ggfortify","tidyverse")
+		
+	for (i in requiredpackages) {
+		if (!requireNamespace(i, quietly = TRUE))
+			BiocManager::install(i, ask = F, dependencies = c("Depends", "Imports"))
+		require(as.character(i), character.only = TRUE)
+		print(i)
+	}
+```
+
+#### Script block 2: SETTINGS
+In this script some parameters can be changed, these are located in this block. This way changing parameters is easy and robust.
+```{r}
+	# General settings
+	options(stringsAsFactors 	= F)
+
+	# Select 80% for train, 20% for test
+	Randomfactor = 0.8
+	linearAlkanesOnly = 0  # 1 = yes; 0 = no.
+
+	# Setting seed to keep consistent results 
+	set.seed(1)
+```
+
+
+#### Script block 3: FUNCTIONS
+To assess the performance of the models at later hand, these functions have been made. The Root Mean Squared Error (RMSE) and Mean Absolute Error (MAE) are often used to compare models of similar function.
+```{r}
+	# Root Mean Squared Error
+	RMSE = function(yact, ypred){
+	  sqrt(mean((yact - ypred)^2))
+	}
+
+	# Mean Absolute Error 
+	MAE = function(yact, ypred){
+	  mean(abs(yact - ypred))
+	}
+
+```
+
+
+#### Script block 4: QUERY CALL
+This block gets the data from WikiData. As stated before, the goal is to extract boiling points from alkenes. This query call extracts the following pieces of information: unique alkene name, boiling point, boiling point unit and concatenated smiles. It is essential the concatenated smiles are extracted, as these will be used later to enrich the data. All this information is stored in a dataframe called 'dataObj'.
+```{r}
+	endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
+
+	query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+	  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+			p:P2102 [
+			  ps:P2102 ?bp ;
+			  psv:P2102/wikibase:quantityUnit  ?bpUnit
+			] .
+			?comp wdt:P233 ?CC .
+	  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+	}
+	'
+
+	dataObj = query_wikidata(query)
+```
+
+
+#### Script block 5: BOILINGPOINT UNIT CONVERSION
+As the query extracts *all* boiling points, sevceral different units might be used for a single alkene. Thus, these need to be checked and converted to Kelvin, as this is a international unit. However, during the development of this script only two other units were found, Celsius and Fahrenheit. This means when another unit is introduced, the algorithm cannot detect it and will use this unit as outlier. To overcome this, after conversion all the samples containing a 'Kelvin' unit will be used, while others are removed from the dataset. Finally, 'dataObj' is subsetted to contain the alkene name, boiling point and concatenated smiles.
+ 
+```{r}
+	#C to Kelvin:
+	# 0°C + 273.15 = 273,15K
+	idC = which(dataObj$bpUnitLabel=="degree Celsius")
+	for( i in 1:length(idC)){
+		dataObj[idC[i],]$bp = (dataObj[idC[i],]$bp + 273.15)
+		dataObj[idC[i],]$bpUnitLabel = "kelvin"
+	}
+
+	#F to Kelvin:
+	# (0°F − 32) × 5/9 + 273.15 = 255,372K
+	idF = which(dataObj$bpUnitLabel=="degree Fahrenheit")
+	for( i in 1:length(idF)){
+		dataObj[idF[i],]$bp= (dataObj[idF[i],]$bp - 32) * (5/9) + 273.15
+		dataObj[idF[i],]$bpUnitLabel = "kelvin"
+	}
+
+	#additional failsafe if other metrics than Celsius and Fahrenheit are added (other metrics are removed)
+	dataObj = dataObj[which(dataObj$bpUnitLabel=="kelvin"),]
+
+	# Make backup
+	dataObjBACKUP = dataObj
+
+	# Finalize data structure
+	dataObj = data.frame(dataObjBACKUP$compLabel, dataObjBACKUP$bp, dataObjBACKUP$CC)
+	names(dataObj) = c("Comp","bp","CC")
+
+```
+
+
+#### Script block 6: FILTERS AND OUTLIER HANDLING
+The extracted data can be filtered on linear alkenes only (no branches), this can be changed in settings. It simplifies the model as it does not need to take the branching in account. After evaluation of the data (which happens in block 7) it was observed two alkenes deviated from the observable trend line. This was because one alkene (hexatriacontane) contained boiling point data under pressurised condition, altering the boiling point compared to the rest. The second alkene (Dooctacontane) has a lower boiling point temperature for no clear reason; when looking this up in [ChemSpider](http://www.chemspider.com/Chemical-Structure.455910.html), it is observed the boiling point is	684.9±18.0 °C while WikiData states 608.7 °C. The two alkanes are locally corrected as these need looking in to.
+```{r}
+	if(linearAlkanesOnly == 1){
+		dataObj = dataObj[-grep(pattern = "\\(",x = dataObj$CC),]
+	}
+
+	# hexatriacontane 770.15 K (497 C); in wikidata under pressurised condition!
+	dataObj$bp[dataObj$Comp=="hexatriacontane"] = 770.15
+
+	# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k
+	dataObj$bp[dataObj$Comp=="Dooctacontane"] = 958.05
+
+```
+
+
+#### Script block 7: DATA OVERVIEW
+After correction / filtering the data, it is visualized in this block. It indicates a exponentional relationship between boiling point and length of the alkene (based on the carbon atom backbone). This is a indication that a 'simple' model should be able to pick up the variables involved to determine the boiling point. The histogram indicates the boiling point frequency distribution, ideally, this would be normally distributed. It can be observed that it is *not* normally distributedl; and should be taken in account.
+```{r}
+	# Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
+	CClength_crude = nchar(gsub(pattern = "\\)",replacement = "",x = gsub(pattern = "\\(",replacement = "",x = dataObj$CC)))
+	plotCClength = CClength_crude[order(CClength_crude)]
+	BPplot = dataObj$bp[order(CClength_crude)]
+
+	# Should result in a exponential function-like graph
+	plot(plotCClength,BPplot,main = "Carbon - boilingpoint relation",xlab = "Amount of carbon atoms in alkene",ylab = "Boiling point (Kelvin)")
+
+	# Show how the data is distributed (focussing on bp)
+	hist(dataObj$bp,breaks=20,main = "Boiling point frequency distribution",xlab = "Boiling point (Kelvin)",ylab = "Frequency")
+
+```
+
+
+#### Script block 8: DATA ENRICHMENT
+To build a model, variables are required to reflect the selected molecule. Several aspects can be derived from the concatenated smiles directly, such as the amount of (C)arbon and (H)ydrogen atoms. However, when looking into molecules many more things can be stated, such as electronegativity or 3d-structure. The [RCDK package](https://cran.r-project.org/web/packages/rcdk/index.html) in R uses concatenated smiles to determine several molecular descriptors. This information can be stored in a data frame per alkene molecule, which becomes the input for machine learing. This is possible as the output *y* (boiling point) is extracted from WikiData, and variables *v(1)..v(n)* are the obtained molecular descriptors. This dataframe is called 'descs', containing many variables.
+```{r}
+	sp <- get.smiles.parser()
+	dc <- get.desc.categories()
+
+	for( i in 1:length(dataObj$CC)){
+
+		# Get smiles from result query and add information
+		molecule <- parse.smiles(dataObj$CC[i])[[1]]
+		convert.implicit.to.explicit(molecule)
+		#formula <- get.mol2formula(molecule,charge=0)
+
+
+		# Store the found information
+		#dataObj$formula[i] = {formula} # S4 object cannot be transferred nicely
+		#dataObj$mass[i] = formula@mass
+		#dataObj$string[i] = formula@string
+		#dataObj$charge[i] = formula@charge
+
+		# M/z values 
+		#dataObj$isotopes[i] = {get.isotopes.pattern(formula,minAbund=0.1)}
+
+		# Fingerprint? values
+		#dataObj$fingerprint[i] = {get.fingerprint(molecule = molecule)}
+
+		# Create a dataframe which contains all info possible to extract using the descriptors
+		datafr = dataObj$Comp[i]
+		for(o in 1:5){
+			dn <- get.desc.names(dc[o])
+			datafr = cbind(datafr, eval.desc(molecule, dn))
+		}
+		
+		# This is done now as it will break if descriptors change (amount)
+		if(exists("mydata")){
+			mydata[i,] = datafr
+			}else{
+			mydata = datafr
+		}
+
+	}
+
+	# Make backup from data, easy for testing (resetting)
+	mydataBACKUP = mydata
+	mydata = mydataBACKUP
+
+	# Remove names
+	descs = mydata[,-1]
+
+```
+
+
+#### Script block 9: LATENT VARIABLE FILTER
+Because 'descs' contains many variables, the *curse of dimensionality* is a phenomena stating the amount of variables is bigger than the amount of samples, leading to infinite results (cannot predict). To account for this several (crude) steps are taken, first all columns containing NAs are removed. Second, the descriptors are correlated with the boiling point to indicate correlated varibles. At last, the top 15 (abs) correlating variables are selected and kept while all other variables are removed. As there are around 130 samples and 15 variables, a prediction is possible. A dataframe called 'my_data' is created containing: the amount of carbons in the backbone *n*, the 15 top correlated variables *v(1..15)* and the expected output *y*.
+```{r}
+# Remove NAs n stuff
+	descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
+	descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
+
+	if(T){
+		# Correlate the descriptors with the boiling point; if these are linked, they should add some info
+		corMatrix = cor(descs , dataObj$bp)
+		corMatrix = as.data.frame(corMatrix[order(abs(corMatrix),decreasing = T),])
+
+		# select first 15 components:
+		componentNames = rownames(corMatrix)[1:15]
+		descs = descs[,match(colnames(descs), x = componentNames)]
+	}
+
+	# - BLOCKED - Old method, keepin this inside for further reference 
+	if(F){
+		mydata = mydataBACKUP
+		descs = mydata[,-1]
+
+		# crude way to extract 'important' features based on correlation
+		descs <- descs[, !apply(descs, 2, function(x) any(is.na(x)) )]
+		descs <- descs[, !apply( descs, 2, function(x) length(unique(x)) == 1 )]
+		r2 <- which(cor(descs)^2 > .9, arr.ind=TRUE) # when keeping this high, the prediction improves
+		r2 <- r2[ r2[,1] > r2[,2] , ]
+		descs <- descs[, -unique(r2[,2])]
+	}
+	# - BLOCKED -
+
+	# should contain nAtomLAC; the amount of c atoms
+	if(!exists("descs$nAtomLAC")){
+
+		descs = cbind(descs, mydata$nAtomLAC)
+		names(descs)[dim(descs)[2]] = "n"
+		}else{
+		names(descs)[names(descs)=="descs$nAtomLAC"] = "n"
+	}
+
+	# Store resulting input file in my_data; as it is used everywhere
+	my_data = descs
+
+	# Finish prepare data
+	# Add and define the 'to be predicted' column
+	n_col <- ncol(my_data)
+	BoilPoint = n_col+1
+	my_data[,BoilPoint] = dataObj$bp
+	names(my_data)[BoilPoint] = 'BoilPoint'
+
+	# Ordered data is required later
+	my_data = my_data[order(my_data$BoilPoint),]
+```
+
+
+#### Script block 10: DATA SUBSETTING FOR MACHINE LEARNING
+To create robust (machine learning) models several aspects need to be accounted for. Overfitting is the proces of fitting the model perfectly to *this* dataset, while another dataset might not fit that well. A balance must be struck between robustness and minimal error. This is why the dataset is split into a training and test set, by evaluating the model performance on both sets, the overfitting and robustness van be evaluated. This block of code splits the data in a test and training set, using a density-biased random sampling approach. As stated before, the samples are not uniformly distributed, thus, a random sampling approach *will* select more samples with higher boiling points, shifing the model focus to higher boiling points rather than uniform. 
+```{r}
+	# Define variables 
+	sample.length = length(my_data[,1])
+
+	# Higher probability to select lower (underrepresented) samples; 
+	# improves range of model, increases fit and prediction power.
+	# Ranges from 1 (select) to 0.5 (chance)
+	sample.biasprob = 1 - 1:sample.length /max(sample.length )/2 
+
+	# Make data objects
+	samples.upper = sample(sample.length , floor(length(my_data[,1])*Randomfactor),prob = sample.biasprob ) #get all unique samples (not frequecies) and sample 80%
+	#plot(samples.upper[order(samples.upper)])
+	samples.total = (1:length(my_data[,1])) # all unique samples (not frequecies)
+	samples.lowerl = samples.total[!samples.total %in% samples.upper]  #which samples are sampled
+
+	# Subset data
+	data.train = my_data[samples.upper,]#contains all upper 
+	data.train = as.data.frame(data.train)
+	data.test = my_data[samples.lowerl,]#contains all lower 
+	data.test = as.data.frame(data.test)
+
+	# Remove nas
+	data.train=data.train[!is.na(data.train[,1]),]
+	data.test=data.test[!is.na(data.test[,1]),]
+
+	# Create standardized object
+	xNN = data.train[,-(BoilPoint)]
+	yNN = data.train[,BoilPoint]
+	dat = data.frame(xNN, y = yNN)
+
+	# Remove samples with in datasets n < 1
+	data.train = dat[dat$n>0,]
+	yactual.train = data.train$y
+	data.test = data.test[data.test$n>0,]
+	yactual.test = data.test$BoilPoint
+
+```
+
+
+#### Script block 11: PLS MODEL
+A PLS model was created using the [Caret](http://topepo.github.io/caret/index.html) package in R, which is a framework for a variarity of machine learning approaches. (10) k-fold cross validataion was applied to increase the model performance as it estimates the best latent variables which should be used. When evaluating the model's performance, RMSE and MAE is used in addition to a predict vs actual plot. These are calculated for training and test set, to indicate robustness and overfitting.
+```{r}
+	# Define training control method; 10 - k - cross validation
+	train_control <- trainControl(method="cv", number=10)
+
+	# Train the model
+	model <- train(y~., data=data.train, trControl=train_control, method="pls")
+
+	# Find out what model is best
+	print(model)
+
+	# Find out most important variables
+	Varimportance = varImp(model)
+	cat(paste("Best model fit with", model$bestTune, "latent components \n"))
+	cat(paste("Latent components:",paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = ", "),"\n"))
+	plot(Varimportance, main="Varible importance in PLS model \n")
+
+	# Predict test set
+	ypredCARET.pls.test <- model %>% predict(data.test)
+
+	# Root mean squared error
+	RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
+	RMSE.pls.test
+	# Results in: 10.61
+
+	# Mean absolute error
+	MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
+	MAE.pls.test
+	# Results in: 10.00
+
+	# Plot ypred vs yactual of test data
+	plot(yactual.test, ypredCARET.pls.test,
+		xlab="Observed BP test set", ylab="Predicted BP test set",
+		pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (PLS model)")
+		abline(0,1, col='red')
+		text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.test))
+		text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.test))
+
+	# Predict training data; check overfitting
+	ypredCARET.pls.train <- model %>% predict(data.train)
+
+	# Root mean squared error
+	RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
+	RMSE.pls.train
+	# Results in: 13.60
+
+	# Mean absolute error
+	MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
+	MAE.pls.train
+	# Results in: 10.26
+
+	# Plot ypred vs yactual of training data
+	plot(yactual.train, ypredCARET.pls.train,
+		xlab="Observed BP train set", ylab="Predicted BP train set",
+		pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set (PLS model)")
+		abline(0,1, col='red')
+		text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.train))
+		text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.train))
+
+```
+
+#### Evaluation of PLS model
+The 10-fold cross-validated PLS model used 3 latent variables (VAdjMat, Kier1, khs.ssCH2) to estimate the boiling point within 16 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be *16 / (1100 - 200) x 100 =* 1.8%.
+
+It can be observed the test RMSE is 16.09 and MAE 14.97; training RMSE is 19.94 and MAE 14.84. 
+
+If overfitting did happen, the training error would be significanly lower than the test error, which is not the case. 
+
+However, the training error is higher than the test error, indicating the model fits the test dataset better. This is logical as the training set has many more points than the test set, creating the possibility to gain more error in the training set.
+
+The MAE is very comparable, indicative of no under- or overfitting. 
+
+By examinating the plots and comparing the direction of error, it can be seen as the model balances the prediction; underestimating at first, then overestimating, then underestimating and at last overestimating. This might be induced by nonlinear effects which are not fully captured in the selected variables. 
+
+#### Script block 12: RANDOM FOREST MODEL
+As the caret package includes many different machine learing methods, a random forest model has been included. Random forest has been chosen as this method has been proven powerfull and can capture liner as well as nonliner effects. It can be observed the Random forest model's performance is better than the PLS model. However, both models can be improved by tuning the parameters and obtaining better molecular descriptors.
+```{r}
+	# Define training control method; 10 - k - cross validation
+	train_control <- trainControl(method="cv", number=10)
+
+	# Train the model
+	model <- train(y~., data=data.train, trControl=train_control, method="rf")
+
+	# Find out what model is best
+	print(model)
+
+	# Find out most important variables - BLOCKED - this doesnt work for rf
+	if(F){
+		Varimportance = varImp(model)
+		cat(paste("Best model fit with", model$bestTune, "latent components \n"))
+		cat(paste("Latent components:",paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = ", "),"\n"))
+		plot(Varimportance, main="Varible importance in rf model \n")
+	}
+	# Predict test set
+	ypredCARET.rf.test <- model %>% predict(data.test)
+
+	# Root mean squared error
+	RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
+	RMSE.rf.test
+	# Results in: 10.61
+
+	# Mean absolute error
+	MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
+	MAE.rf.test
+	# Results in: 10.00
+
+	# Plot ypred vs yactual of test data
+	plot(yactual.test, ypredCARET.rf.test,
+		xlab="Observed BP test set", ylab="Predicted BP test set",
+		pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (RandomForest model)")
+		abline(0,1, col='red')
+		text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.rf.test))
+		text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.rf.test))
+
+	# Predict training data; check overfitting
+	ypredCARET.rf.train <- model %>% predict(data.train)
+
+	# Root mean squared error
+	RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
+	RMSE.rf.train
+	# Results in: 13.60
+
+	# Mean absolute error
+	MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
+	MAE.rf.train
+	# Results in: 10.26
+
+	# Plot ypred vs yactual of training data
+	plot(yactual.train, ypredCARET.rf.train,
+		xlab="Observed BP train set", ylab="Predicted BP train set",
+		pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set (RandomForest model)")
+		abline(0,1, col='red')
+		text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.rf.train))
+		text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.rf.train))
+
+```
+
+#### Evaluation of RandomForest model
+The 10-fold cross-validated RandomForest model used 9 predictors to estimate the boiling point within 8.3 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be *8.3 / (1100 - 200) x 100 =* 0.9%.
+
+It can be observed the test RMSE is 8.30 and MAE 5.25; training RMSE is 7.61 and MAE 3.79. 
+
+If overfitting did happen, the training error would be significanly lower than the test error. Comparing the RMSE and MAE indicates slight overfitting.
+
+By examinating the plots and comparing the direction of error, it can be seen this prediction seems spot on with tlight uniform error. Comparing this model to the PLS model a clear difference can be seen, which is likely caused by the nonlinear predictive power of random forest.
+
+
+
+

@@ -1,0 +1,9 @@
+---
+title: "Versions"
+---
+
+```{r}
+version
+Sys.info()
+sessionInfo()
+```
