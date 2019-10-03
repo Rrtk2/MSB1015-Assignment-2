@@ -1,6 +1,6 @@
 # MSB1015-Assignment-2
 
-[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Ongoing-yellow) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
+[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Wrapping_up-green) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
 
 
 #### What is this project about
@@ -12,7 +12,7 @@ The setup of a [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) need
 Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project.
 
 #### Expected output
-Using the default settings the output should be very similar to **'(empty)'** in the 'Expected output' folder.  Download all the files in the folder to open the page correctly.
+Using the default settings the output should be very similar as observed in the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/). Any updates which alters the result of the query will alter the results when the script is re-ran.
 
 #### Project structure
 ##### Where does data come from?
@@ -21,11 +21,33 @@ The query asks information from [Wikidata](http://wikidata.org) in a similar fas
 ##### How is data shared, in what format, with what protocols?
 Using the tool developed in this project, data is shared using the [wikidata-sdk](https://www.wikidata.org/w/api.php). 
 
-##### How is data processed and analyzed?
-(empty)
+##### Workflow
+The folowing workflow is applied, coherent to the script blocks:
 
-##### In what order do the processing and analysis steps take place?
-(empty)
+1) Install packages
+
+2) Define user settings
+
+3) Set user functions
+
+4) Define WikiData query call & extract data
+
+5) Convert units to Kelvin
+
+6) (Optional) filtering and data cleanup
+
+7) Visualize raw data 
+
+8) Data enrichment (using rcdk)
+
+9) Latent variable filtering
+
+10) Data subsetting for machine learning
+
+11) Machine learning (PLS model)
+
+12) Machine learning (RandomForest model)
+
 
 #### Contact
 ra.reijnders@student.maastrichtuniversity.nl
@@ -42,7 +64,7 @@ RRtK2 (owner and contributor)
 
 
 #### Status of project
-Ongoing. Creating all essential code in the [script](/Testing/raw R-script.R) needed to create the final product for this assignment.
+Wrapping up. Minor adjustments to the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) might occur, as well as to the scripts. Bugfixes.
 
 
 #### Copyright and authors
