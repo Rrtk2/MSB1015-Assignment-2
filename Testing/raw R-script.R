@@ -7,7 +7,7 @@
 #
 # Author comment:
 #   Rick Reijnders
-#   Script version: 02-10-2019
+#   Script version: 03-10-2019
 
 # File description:
 #	Name
@@ -140,10 +140,10 @@ plotCClength = CClength_crude[order(CClength_crude)]
 BPplot = dataObj$bp[order(CClength_crude)]
 
 # Should result in a exponential function-like graph
-plot(plotCClength,BPplot)
+plot(plotCClength,BPplot,main = "Carbon - boilingpoint relation",xlab = "Amount of carbon atoms in alkene",ylab = "Boiling point (Kelvin)")
 
 # Show how the data is distributed (focussing on bp)
-hist(dataObj$bp,breaks=20)
+hist(dataObj$bp,breaks=20,main = "Boiling point frequency distribution",xlab = "Boiling point (Kelvin)",ylab = "Frequency")
 
 #-----------------------------------------------------------------------------------------------------#
 # 		Block 03		rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
@@ -265,7 +265,7 @@ sample.biasprob = 1 - 1:sample.length /max(sample.length )/2
 
 # Make data objects
 samples.upper = sample(sample.length , floor(length(my_data[,1])*Randomfactor),prob = sample.biasprob ) #get all unique samples (not frequecies) and sample 80%
-plot(samples.upper[order(samples.upper)])
+#plot(samples.upper[order(samples.upper)])
 samples.total = (1:length(my_data[,1])) # all unique samples (not frequecies)
 samples.lowerl = samples.total[!samples.total %in% samples.upper]  #which samples are sampled
 
@@ -304,41 +304,52 @@ model <- train(y~., data=data.train, trControl=train_control, method="pls")
 print(model)
 
 # Find out most important variables
-plot(varImp(model))
+Varimportance = varImp(model)
+cat(paste("Best model fit with", model$bestTune, "latent components \n"))
+cat(paste("Latent components:",paste(rownames(Varimportance$importance)[order(decreasing = T,Varimportance$importance$Overall)][1:model$bestTune[1,]],collapse = ", "),"\n"))
+plot(Varimportance, main="Varible importance in PLS model \n")
 
 # Predict test set
 ypredCARET.pls.test <- model %>% predict(data.test)
 
 # Root mean squared error
-RMSE(yactual.test, ypredCARET.pls.test)
+RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
+RMSE.pls.test
 # Results in: 10.61
 
 # Mean absolute error
-MAE(yactual.test, ypredCARET.pls.test)
+MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
+MAE.pls.test
 # Results in: 10.00
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
-     xlab="Observed BP test set", ylab="Predicted BP test set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
+    xlab="Observed BP test set", ylab="Predicted BP test set",
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set")
+	abline(0,1, col='red')
+	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.test))
+	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.test))
 
 # Predict training data; check overfitting
 ypredCARET.pls.train <- model %>% predict(data.train)
 
 # Root mean squared error
-RMSE(yactual.train, ypredCARET.pls.train)
+RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
+RMSE.pls.train
 # Results in: 13.60
 
 # Mean absolute error
-MAE(yactual.train, ypredCARET.pls.train)
+MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
+MAE.pls.train
 # Results in: 10.26
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
-     xlab="Observed BP train set", ylab="Predicted BP train set",
-     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)))
-abline(0,1, col='red')
+    xlab="Observed BP train set", ylab="Predicted BP train set",
+    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error training set")
+	abline(0,1, col='red')
+	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.train))
+	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.train))
 
 #-----------------------------------------------------------------------------------------------------#
 #							CARET : RF
