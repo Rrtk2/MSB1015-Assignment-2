@@ -9,7 +9,7 @@ The setup of a [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) need
 
 
 #### Usage
-Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project.
+Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project. To run the code on your local computer, go to the [GitHub raw code page](https://rrtk2.github.io/MSB1015-Assignment-2/raw.html) and insert this code into your local R version. This will install and load the required libraries, do the query, use machine learning and create 2 models which can be used to predict the boiling temperatures. In block 2 (SETTINGS) several parameters can be adjusted, such as the training size or querry call. 
 
 #### Expected output
 Using the default settings the output should be very similar as observed in the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/). Any updates which alters the result of the query will alter the results when the script is re-ran.
