@@ -320,7 +320,7 @@ rm(list=ls()) # clean workspace
 
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 01        (Install &amp;) Load packages
+#       Script block 1: INSTALL PACKAGES
 #-----------------------------------------------------------------------------------------------------#
 # Install packages if needed and load, or just load packages
 if (!requireNamespace(&quot;BiocManager&quot;, quietly = TRUE))
@@ -340,7 +340,7 @@ for (i in requiredpackages) {
 
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 02        SETTINGS
+#       Script block 2: SETTINGS
 #-----------------------------------------------------------------------------------------------------#
 # General settings
 options(stringsAsFactors    = F)
@@ -352,9 +352,23 @@ linearAlkanesOnly = 0  # 1 = yes; 0 = no.
 # Setting seed to keep consistent results 
 set.seed(1)
 
+# The variable &#39;query&#39; contains the query call; make sure the query text is within the &quot;&#39;&quot; and &quot;&#39;&quot;.
+query = &#39;
+
+SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+        p:P2102 [
+          ps:P2102 ?bp ;
+          psv:P2102/wikibase:quantityUnit  ?bpUnit
+        ] .
+        ?comp wdt:P233 ?CC .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language &quot;[AUTO_LANGUAGE],en&quot;. }
+}
+
+&#39;
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        FUNCTIONS
+#       Script block 3: FUNCTIONS
 #-----------------------------------------------------------------------------------------------------#
 # Root Mean Squared Error
 RMSE = function(yact, ypred){
@@ -368,26 +382,17 @@ MAE = function(yact, ypred){
 
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        Get query results
+#       Script block 4: QUERY CALL
 #-----------------------------------------------------------------------------------------------------#
+# Set endpoint for wikidata
 endpoint = &quot;https://query.wikidata.org/bigdata/namespace/wdq/sparql&quot;
 
-query = &#39;SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
-  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
-        p:P2102 [
-          ps:P2102 ?bp ;
-          psv:P2102/wikibase:quantityUnit  ?bpUnit
-        ] .
-        ?comp wdt:P233 ?CC .
-  SERVICE wikibase:label { bd:serviceParam wikibase:language &quot;[AUTO_LANGUAGE],en&quot;. }
-}
-&#39;
-
+# Get the results
 queryResults = query_wikidata(query)
 
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        bp check ; to kelvin
+#       Script block 5: BOILINGPOINT UNIT CONVERSION
 #-----------------------------------------------------------------------------------------------------#
 #C to Kelvin:
 # 0°C + 273.15 = 273,15K
@@ -417,7 +422,7 @@ names(queryResults) = c(&quot;Comp&quot;,&quot;bp&quot;,&quot;CC&quot;)
 
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        FILTERS AND OUTLIER HANDLING
+#       Script block 6: FILTERS AND OUTLIER HANDLING
 #-----------------------------------------------------------------------------------------------------#
 if(linearAlkanesOnly == 1){
     queryResults = queryResults[-grep(pattern = &quot;\\(&quot;,x = queryResults$CC),]
@@ -427,13 +432,19 @@ if(linearAlkanesOnly == 1){
 if(!length(queryResults$Comp==&quot;hexatriacontane&quot;)==0){
     queryResults$bp[queryResults$Comp==&quot;hexatriacontane&quot;] = 770.15
 }
-# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k3
+# Dooctacontane 958.05 K (684.9 C); IN WIKIDATA AS 881.85 K
 if(!length(queryResults$Comp==&quot;Dooctacontane&quot;)==0){
     queryResults$bp[queryResults$Comp==&quot;Dooctacontane&quot;] = 958.05
 }
 
+# phytane 612.32 K (322.4 C); IN WIKIDATA AS 442.65 K at 760 torr which should be (322.4 C) 612.32 K.
+if(!length(queryResults$Comp==&quot;phytane&quot;)==0){
+    queryResults$bp[queryResults$Comp==&quot;phytane&quot;] = 612.32
+}
+
+
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        DATA VIZ
+#       Script block 7: DATA OVERVIEW
 #-----------------------------------------------------------------------------------------------------#
 # Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
 CClength_crude = nchar(gsub(pattern = &quot;\\)&quot;,replacement = &quot;&quot;,x = gsub(pattern = &quot;\\(&quot;,replacement = &quot;&quot;,x = queryResults$CC)))
@@ -447,7 +458,7 @@ plot(plotCClength,plotBP,main = &quot;Carbon - boilingpoint relation&quot;,xlab 
 hist(queryResults$bp,breaks=20,main = &quot;Boiling point frequency distribution&quot;,xlab = &quot;Boiling point (Kelvin)&quot;,ylab = &quot;Frequency&quot;)
 
 #-----------------------------------------------------------------------------------------------------#
-#       Block 03        rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
+#       Script block 8: DATA ENRICHMENT see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
 #-----------------------------------------------------------------------------------------------------#
 smilesParser &lt;- get.smiles.parser()
 descCategories &lt;- get.desc.categories()
@@ -497,7 +508,7 @@ dfSmilesDescData = dfSmilesDescData[,-1]
 
 
 #-----------------------------------------------------------------------------------------------------#
-#                           Latent variable selection (correlation)
+#       Script block 9: LATENT VARIABLE FILTER
 #-----------------------------------------------------------------------------------------------------#
 # Remove NAs n stuff
 dfSmilesDescData &lt;- dfSmilesDescData[, !apply(dfSmilesDescData, 2, function(x) any(is.na(x)) )]
@@ -550,10 +561,7 @@ dfInputML = dfInputML[order(dfInputML$BoilPoint),]
 
 
 #-----------------------------------------------------------------------------------------------------#
-#                           MACHINE LEARNING
-#-----------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------#
-#               Data subsetting; Train; Test
+#       Script block 10: DATA SUBSETTING FOR MACHINE LEARNING
 #-----------------------------------------------------------------------------------------------------#
 # Define variables 
 sample.length = length(dfInputML[,1])
@@ -592,7 +600,7 @@ yactual.test = data.test$BoilPoint
 
 
 #-----------------------------------------------------------------------------------------------------#
-#                           CARET : pls
+#       Script block 11: PLS MODEL
 #-----------------------------------------------------------------------------------------------------#
 # Define training control method; 10 - k - cross validation
 train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
@@ -615,12 +623,12 @@ ypredCARET.pls.test &lt;- model %&gt;% predict(data.test)
 # Root mean squared error
 RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
 RMSE.pls.test
-# Results in: 10.61
+# Results in: 16.09
 
 # Mean absolute error
 MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
 MAE.pls.test
-# Results in: 10.00
+# Results in: 14.97
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
@@ -636,12 +644,12 @@ ypredCARET.pls.train &lt;- model %&gt;% predict(data.train)
 # Root mean squared error
 RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
 RMSE.pls.train
-# Results in: 13.60
+# Results in: 19.94
 
 # Mean absolute error
 MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
 MAE.pls.train
-# Results in: 10.26
+# Results in: 14.84
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
@@ -652,7 +660,7 @@ plot(yactual.train, ypredCARET.pls.train,
     text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.pls.train))
 
 #-----------------------------------------------------------------------------------------------------#
-#                           CARET : RF
+#       Script block 12: RANDOM FOREST MODEL
 #-----------------------------------------------------------------------------------------------------#
 # Define training control method; 10 - k - cross validation
 train_control &lt;- trainControl(method=&quot;cv&quot;, number=10)
@@ -676,12 +684,12 @@ ypredCARET.rf.test &lt;- model %&gt;% predict(data.test)
 # Root mean squared error
 RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
 RMSE.rf.test
-# Results in: 10.61
+# Results in: 8.19
 
 # Mean absolute error
 MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
 MAE.rf.test
-# Results in: 10.00
+# Results in: 5.35
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.rf.test,
@@ -697,12 +705,12 @@ ypredCARET.rf.train &lt;- model %&gt;% predict(data.train)
 # Root mean squared error
 RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
 RMSE.rf.train
-# Results in: 13.60
+# Results in: 7.65
 
 # Mean absolute error
 MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
 MAE.rf.train
-# Results in: 10.26
+# Results in: 3.78
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.rf.train,
@@ -710,8 +718,7 @@ plot(yactual.train, ypredCARET.rf.train,
     pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main=&quot;Prediction error training set (RandomForest model)&quot;)
     abline(0,1, col=&#39;red&#39;)
     text(200,ceiling(max(yNN)*1.1),paste(&quot;RMSE: &quot;,RMSE.rf.train))
-    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.rf.train))
-</code></pre>
+    text(200,ceiling(max(yNN)*1.1)-50,paste(&quot;MAE: &quot;,MAE.rf.train))</code></pre>
 
 
 

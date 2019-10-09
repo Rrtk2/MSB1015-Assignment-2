@@ -304,6 +304,20 @@ $(document).ready(function () {
 <h2>Introduction</h2>
 <p>This GitHub Page is a final product of assignment 2, requested by the course MSB1015 (Scientific Programming). The goal is to create a GitHub Page (notebook) for the following analysis. The boiling points of alkenes need to be predicted based on data from WikiData; Smiles are used to enrich the data using the rcdk package in R, afterward, machine learning is applied. See the <a href="https://github.com/Rrtk2/MSB1015-Assignment-2">GitHub repository</a> for more details.</p>
 </div>
+<div id="programming-language" class="section level2">
+<h2>Programming language</h2>
+<ul>
+<li>R</li>
+</ul>
+</div>
+<div id="programming-apporaches" class="section level2">
+<h2>Programming apporaches</h2>
+<ul>
+<li>WikiData query</li>
+<li>rcdk (r package)</li>
+<li>machine learning using caret (r package)</li>
+</ul>
+</div>
 <div id="workflow" class="section level2">
 <h2>Workflow</h2>
 <p>The folowing workflow is applied, coherent to the script blocks:</p>
@@ -340,21 +354,15 @@ $(document).ready(function () {
         print(i)
     }</code></pre>
 <pre><code>## Loading required package: WikidataQueryServiceR</code></pre>
-<pre><code>## Warning: package &#39;WikidataQueryServiceR&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;WikidataQueryServiceR&quot;</code></pre>
 <pre><code>## Loading required package: ggplot2</code></pre>
-<pre><code>## Warning: package &#39;ggplot2&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;ggplot2&quot;</code></pre>
 <pre><code>## Loading required package: backports</code></pre>
-<pre><code>## Warning: package &#39;backports&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;backports&quot;</code></pre>
 <pre><code>## Loading required package: rJava</code></pre>
-<pre><code>## Warning: package &#39;rJava&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;rJava&quot;</code></pre>
 <pre><code>## Loading required package: rcdk</code></pre>
-<pre><code>## Warning: package &#39;rcdk&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## Loading required package: rcdklibs</code></pre>
-<pre><code>## Warning: package &#39;rcdklibs&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;rcdk&quot;</code></pre>
 <pre><code>## Loading required package: pls</code></pre>
 <pre><code>## 
@@ -364,7 +372,6 @@ $(document).ready(function () {
 ##     loadings</code></pre>
 <pre><code>## [1] &quot;pls&quot;</code></pre>
 <pre><code>## Loading required package: randomForest</code></pre>
-<pre><code>## Warning: package &#39;randomForest&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## randomForest 4.6-14</code></pre>
 <pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
 <pre><code>## 
@@ -374,7 +381,6 @@ $(document).ready(function () {
 ##     margin</code></pre>
 <pre><code>## [1] &quot;randomForest&quot;</code></pre>
 <pre><code>## Loading required package: gplots</code></pre>
-<pre><code>## Warning: package &#39;gplots&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;gplots&#39;</code></pre>
 <pre><code>## The following object is masked from &#39;package:stats&#39;:
@@ -382,14 +388,11 @@ $(document).ready(function () {
 ##     lowess</code></pre>
 <pre><code>## [1] &quot;gplots&quot;</code></pre>
 <pre><code>## Loading required package: curl</code></pre>
-<pre><code>## Warning: package &#39;curl&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;curl&quot;</code></pre>
 <pre><code>## Loading required package: data.table</code></pre>
-<pre><code>## Warning: package &#39;data.table&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## data.table 1.12.2 using 6 threads (see ?getDTthreads).  Latest news: r-datatable.com</code></pre>
+<pre><code>## data.table 1.12.2 using 4 threads (see ?getDTthreads).  Latest news: r-datatable.com</code></pre>
 <pre><code>## [1] &quot;data.table&quot;</code></pre>
 <pre><code>## Loading required package: caret</code></pre>
-<pre><code>## Warning: package &#39;caret&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## Loading required package: lattice</code></pre>
 <pre><code>## 
 ## Attaching package: &#39;caret&#39;</code></pre>
@@ -398,21 +401,13 @@ $(document).ready(function () {
 ##     R2</code></pre>
 <pre><code>## [1] &quot;caret&quot;</code></pre>
 <pre><code>## Loading required package: ggfortify</code></pre>
-<pre><code>## Warning: package &#39;ggfortify&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## [1] &quot;ggfortify&quot;</code></pre>
 <pre><code>## Loading required package: tidyverse</code></pre>
-<pre><code>## Warning: package &#39;tidyverse&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## -- Attaching packages --------------------------------------- tidyverse 1.2.1 --</code></pre>
 <pre><code>## v tibble  2.1.3     v purrr   0.3.2
 ## v tidyr   1.0.0     v dplyr   0.8.3
 ## v readr   1.3.1     v stringr 1.4.0
 ## v tibble  2.1.3     v forcats 0.4.0</code></pre>
-<pre><code>## Warning: package &#39;tibble&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;tidyr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;readr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;purrr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;dplyr&#39; was built under R version 3.5.3</code></pre>
-<pre><code>## Warning: package &#39;forcats&#39; was built under R version 3.5.3</code></pre>
 <pre><code>## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
 ## x dplyr::between()       masks data.table::between()
 ## x dplyr::combine()       masks randomForest::combine()
@@ -438,7 +433,22 @@ $(document).ready(function () {
     linearAlkanesOnly = 0  # 1 = yes; 0 = no.
 
     # Setting seed to keep consistent results 
-    set.seed(1)</code></pre>
+    set.seed(1)
+
+    # The variable &#39;query&#39; contains the query call; make sure the query text is within the &quot;&#39;&quot; and &quot;&#39;&quot;.
+    query = &#39;
+
+    SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+      ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+            p:P2102 [
+              ps:P2102 ?bp ;
+              psv:P2102/wikibase:quantityUnit  ?bpUnit
+            ] .
+            ?comp wdt:P233 ?CC .
+      SERVICE wikibase:label { bd:serviceParam wikibase:language &quot;[AUTO_LANGUAGE],en&quot;. }
+    }
+
+    &#39;</code></pre>
 </div>
 <div id="script-block-3-functions" class="section level4">
 <h4>Script block 3: FUNCTIONS</h4>
@@ -456,19 +466,10 @@ $(document).ready(function () {
 <div id="script-block-4-query-call" class="section level4">
 <h4>Script block 4: QUERY CALL</h4>
 <p>This block gets the data from WikiData. As stated before, the goal is to extract boiling points from alkenes. This query call extracts the following pieces of information: unique alkene name, boiling point, boiling point unit and concatenated smiles. It is essential the concatenated smiles are extracted, as these will be used later to enrich the data. All this information is stored in a dataframe called ‘dataObj’.</p>
-<pre class="r"><code>    endpoint = &quot;https://query.wikidata.org/bigdata/namespace/wdq/sparql&quot;
+<pre class="r"><code>    # Set endpoint for wikidata
+    endpoint = &quot;https://query.wikidata.org/bigdata/namespace/wdq/sparql&quot;
 
-    query = &#39;SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
-      ?comp wdt:P31/wdt:P279* wd:Q41581 ;
-            p:P2102 [
-              ps:P2102 ?bp ;
-              psv:P2102/wikibase:quantityUnit  ?bpUnit
-            ] .
-            ?comp wdt:P233 ?CC .
-      SERVICE wikibase:label { bd:serviceParam wikibase:language &quot;[AUTO_LANGUAGE],en&quot;. }
-    }
-    &#39;
-
+    # Get the results
     queryResults = query_wikidata(query)</code></pre>
 <pre><code>## 134 rows were returned by WDQS</code></pre>
 </div>
@@ -512,9 +513,14 @@ $(document).ready(function () {
     if(!length(queryResults$Comp==&quot;hexatriacontane&quot;)==0){
         queryResults$bp[queryResults$Comp==&quot;hexatriacontane&quot;] = 770.15
     }
-    # Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k3
+    # Dooctacontane 958.05 K (684.9 C); IN WIKIDATA AS 881.85 K
     if(!length(queryResults$Comp==&quot;Dooctacontane&quot;)==0){
         queryResults$bp[queryResults$Comp==&quot;Dooctacontane&quot;] = 958.05
+    }
+
+    # phytane 612.32 K (322.4 C); IN WIKIDATA AS 442.65 K at 760 torr which should be (322.4 C) 612.32 K.
+    if(!length(queryResults$Comp==&quot;phytane&quot;)==0){
+        queryResults$bp[queryResults$Comp==&quot;phytane&quot;] = 612.32
     }</code></pre>
 </div>
 <div id="script-block-7-data-overview" class="section level4">
@@ -689,13 +695,13 @@ $(document).ready(function () {
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (10 fold) 
-## Summary of sample sizes: 96, 97, 96, 96, 94, 95, ... 
+## Summary of sample sizes: 95, 96, 96, 94, 95, 95, ... 
 ## Resampling results across tuning parameters:
 ## 
 ##   ncomp  RMSE      Rsquared   MAE     
-##   1      78.88333  0.9119557  68.49582
-##   2      61.51563  0.9455272  48.76732
-##   3      20.10864  0.9935478  15.39806
+##   1      79.39736  0.9086731  69.76852
+##   2      55.75790  0.9521011  43.70623
+##   3      16.34968  0.9961370  13.00840
 ## 
 ## RMSE was used to select the optimal model using the smallest value.
 ## The final value used for the model was ncomp = 3.</code></pre>
@@ -713,13 +719,13 @@ $(document).ready(function () {
     # Root mean squared error
     RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
     RMSE.pls.test</code></pre>
-<pre><code>## [1] 16.09627</code></pre>
+<pre><code>## [1] 16.55832</code></pre>
 <pre class="r"><code>    # Results in: 10.61
 
     # Mean absolute error
     MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
     MAE.pls.test</code></pre>
-<pre><code>## [1] 14.97591</code></pre>
+<pre><code>## [1] 14.99758</code></pre>
 <pre class="r"><code>    # Results in: 10.00
 
     # Plot ypred vs yactual of test data
@@ -736,13 +742,13 @@ $(document).ready(function () {
     # Root mean squared error
     RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
     RMSE.pls.train</code></pre>
-<pre><code>## [1] 19.94546</code></pre>
+<pre><code>## [1] 16.0855</code></pre>
 <pre class="r"><code>    # Results in: 13.60
 
     # Mean absolute error
     MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
     MAE.pls.train</code></pre>
-<pre><code>## [1] 14.84614</code></pre>
+<pre><code>## [1] 12.61364</code></pre>
 <pre class="r"><code>    # Results in: 10.26
 
     # Plot ypred vs yactual of training data
@@ -781,13 +787,13 @@ $(document).ready(function () {
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (10 fold) 
-## Summary of sample sizes: 94, 97, 95, 96, 96, 95, ... 
+## Summary of sample sizes: 95, 96, 96, 96, 95, 95, ... 
 ## Resampling results across tuning parameters:
 ## 
-##   mtry  RMSE      Rsquared   MAE      
-##    2    17.74625  0.9944346  10.522246
-##    9    16.76533  0.9948744   9.684701
-##   16    16.87017  0.9948409   9.900477
+##   mtry  RMSE      Rsquared   MAE     
+##    2    8.369344  0.9988297  6.417920
+##    9    7.498294  0.9991336  5.876267
+##   16    7.516760  0.9991283  5.841367
 ## 
 ## RMSE was used to select the optimal model using the smallest value.
 ## The final value used for the model was mtry = 9.</code></pre>
@@ -804,13 +810,13 @@ $(document).ready(function () {
     # Root mean squared error
     RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
     RMSE.rf.test</code></pre>
-<pre><code>## [1] 8.059217</code></pre>
+<pre><code>## [1] 9.208428</code></pre>
 <pre class="r"><code>    # Results in: 10.61
 
     # Mean absolute error
     MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
     MAE.rf.test</code></pre>
-<pre><code>## [1] 5.361585</code></pre>
+<pre><code>## [1] 6.114121</code></pre>
 <pre class="r"><code>    # Results in: 10.00
 
     # Plot ypred vs yactual of test data
@@ -827,13 +833,13 @@ $(document).ready(function () {
     # Root mean squared error
     RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
     RMSE.rf.train</code></pre>
-<pre><code>## [1] 8.222268</code></pre>
+<pre><code>## [1] 4.007465</code></pre>
 <pre class="r"><code>    # Results in: 13.60
 
     # Mean absolute error
     MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
     MAE.rf.train</code></pre>
-<pre><code>## [1] 3.982921</code></pre>
+<pre><code>## [1] 2.775229</code></pre>
 <pre class="r"><code>    # Results in: 10.26
 
     # Plot ypred vs yactual of training data
