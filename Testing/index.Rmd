@@ -49,7 +49,7 @@ The folowing workflow is applied, coherent to the script blocks:
 
 #### Script block 1: INSTALL PACKAGES
 This block installs all packages which are required during this algorithm. It iteravely checks if they are installed, installs if needed, and load them afterward. 
-```{r}
+```{r message=FALSE}
 	# Install packages if needed and load, or just load packages
 	if (!requireNamespace("BiocManager", quietly = TRUE))
 	  install.packages("BiocManager", ask = F)
