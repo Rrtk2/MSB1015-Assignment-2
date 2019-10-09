@@ -50,6 +50,20 @@ linearAlkanesOnly = 0  # 1 = yes; 0 = no.
 # Setting seed to keep consistent results 
 set.seed(1)
 
+# The variable 'query' contains the query call; make sure the query text is within the "'" and "'".
+query = '
+
+SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+        p:P2102 [
+          ps:P2102 ?bp ;
+          psv:P2102/wikibase:quantityUnit  ?bpUnit
+        ] .
+		?comp wdt:P233 ?CC .
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+}
+
+'
 
 #-----------------------------------------------------------------------------------------------------#
 #		Block 03		FUNCTIONS
@@ -68,19 +82,10 @@ MAE = function(yact, ypred){
 #-----------------------------------------------------------------------------------------------------#
 #		Block 03		Get query results
 #-----------------------------------------------------------------------------------------------------#
+# Set endpoint for wikidata
 endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
-query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
-  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
-        p:P2102 [
-          ps:P2102 ?bp ;
-          psv:P2102/wikibase:quantityUnit  ?bpUnit
-        ] .
-		?comp wdt:P233 ?CC .
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-}
-'
-
+# Get the results
 queryResults = query_wikidata(query)
 
 
@@ -125,10 +130,16 @@ if(linearAlkanesOnly == 1){
 if(!length(queryResults$Comp=="hexatriacontane")==0){
 	queryResults$bp[queryResults$Comp=="hexatriacontane"] = 770.15
 }
-# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k3
+# Dooctacontane 958.05 K (684.9 C); IN WIKIDATA AS 881.85 K
 if(!length(queryResults$Comp=="Dooctacontane")==0){
 	queryResults$bp[queryResults$Comp=="Dooctacontane"] = 958.05
 }
+
+# phytane 612.32 K (322.4 C); IN WIKIDATA AS 442.65 K at 760 torr which should be (322.4 C) 612.32 K.
+if(!length(queryResults$Comp=="phytane")==0){
+	queryResults$bp[queryResults$Comp=="phytane"] = 612.32
+}
+
 
 #-----------------------------------------------------------------------------------------------------#
 #		Block 03		DATA VIZ
@@ -313,12 +324,12 @@ ypredCARET.pls.test <- model %>% predict(data.test)
 # Root mean squared error
 RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
 RMSE.pls.test
-# Results in: 10.61
+# Results in: 16.09
 
 # Mean absolute error
 MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
 MAE.pls.test
-# Results in: 10.00
+# Results in: 14.97
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
@@ -334,12 +345,12 @@ ypredCARET.pls.train <- model %>% predict(data.train)
 # Root mean squared error
 RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
 RMSE.pls.train
-# Results in: 13.60
+# Results in: 19.94
 
 # Mean absolute error
 MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
 MAE.pls.train
-# Results in: 10.26
+# Results in: 14.84
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
@@ -374,12 +385,12 @@ ypredCARET.rf.test <- model %>% predict(data.test)
 # Root mean squared error
 RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
 RMSE.rf.test
-# Results in: 10.61
+# Results in: 8.19
 
 # Mean absolute error
 MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
 MAE.rf.test
-# Results in: 10.00
+# Results in: 5.35
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.rf.test,
@@ -395,12 +406,12 @@ ypredCARET.rf.train <- model %>% predict(data.train)
 # Root mean squared error
 RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
 RMSE.rf.train
-# Results in: 13.60
+# Results in: 7.65
 
 # Mean absolute error
 MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
 MAE.rf.train
-# Results in: 10.26
+# Results in: 3.78
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.rf.train,
