@@ -79,6 +79,21 @@ In this script some parameters can be changed, these are located in this block. 
 
 	# Setting seed to keep consistent results 
 	set.seed(1)
+
+	# The variable 'query' contains the query call; make sure the query text is within the "'" and "'".
+	query = '
+
+	SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
+	  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
+			p:P2102 [
+			  ps:P2102 ?bp ;
+			  psv:P2102/wikibase:quantityUnit  ?bpUnit
+			] .
+			?comp wdt:P233 ?CC .
+	  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
+	}
+
+	'
 ```
 
 
@@ -101,19 +116,10 @@ To assess the performance of the models at later hand, these functions have been
 #### Script block 4: QUERY CALL
 This block gets the data from WikiData. As stated before, the goal is to extract boiling points from alkenes. This query call extracts the following pieces of information: unique alkene name, boiling point, boiling point unit and concatenated smiles. It is essential the concatenated smiles are extracted, as these will be used later to enrich the data. All this information is stored in a dataframe called 'dataObj'.
 ```{r}
+	# Set endpoint for wikidata
 	endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
-	query = 'SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
-	  ?comp wdt:P31/wdt:P279* wd:Q41581 ;
-			p:P2102 [
-			  ps:P2102 ?bp ;
-			  psv:P2102/wikibase:quantityUnit  ?bpUnit
-			] .
-			?comp wdt:P233 ?CC .
-	  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],en". }
-	}
-	'
-
+	# Get the results
 	queryResults = query_wikidata(query)
 ```
 
@@ -161,9 +167,14 @@ The extracted data can be filtered on linear alkenes only (no branches), this ca
 	if(!length(queryResults$Comp=="hexatriacontane")==0){
 		queryResults$bp[queryResults$Comp=="hexatriacontane"] = 770.15
 	}
-	# Dooctacontane 958.05 K (684.9 c); IN WIKIDATA AS 881.85 k3
+	# Dooctacontane 958.05 K (684.9 C); IN WIKIDATA AS 881.85 K
 	if(!length(queryResults$Comp=="Dooctacontane")==0){
 		queryResults$bp[queryResults$Comp=="Dooctacontane"] = 958.05
+	}
+
+	# phytane 612.32 K (322.4 C); IN WIKIDATA AS 442.65 K at 760 torr which should be (322.4 C) 612.32 K.
+	if(!length(queryResults$Comp=="phytane")==0){
+		queryResults$bp[queryResults$Comp=="phytane"] = 612.32
 	}
 ```
 
