@@ -18,7 +18,7 @@ rm(list=ls()) # clean workspace
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 01		(Install &) Load packages
+#		Script block 1: INSTALL PACKAGES
 #-----------------------------------------------------------------------------------------------------#
 # Install packages if needed and load, or just load packages
 if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -38,7 +38,7 @@ for (i in requiredpackages) {
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 02		SETTINGS
+#		Script block 2: SETTINGS
 #-----------------------------------------------------------------------------------------------------#
 # General settings
 options(stringsAsFactors 	= F)
@@ -66,7 +66,7 @@ SELECT DISTINCT ?comp ?compLabel ?bp ?bpUnitLabel ?CC WHERE {
 '
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 03		FUNCTIONS
+#		Script block 3: FUNCTIONS
 #-----------------------------------------------------------------------------------------------------#
 # Root Mean Squared Error
 RMSE = function(yact, ypred){
@@ -80,7 +80,7 @@ MAE = function(yact, ypred){
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 03		Get query results
+#		Script block 4: QUERY CALL
 #-----------------------------------------------------------------------------------------------------#
 # Set endpoint for wikidata
 endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
@@ -90,7 +90,7 @@ queryResults = query_wikidata(query)
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 03		bp check ; to kelvin
+#		Script block 5: BOILINGPOINT UNIT CONVERSION
 #-----------------------------------------------------------------------------------------------------#
 #C to Kelvin:
 # 0°C + 273.15 = 273,15K
@@ -120,7 +120,7 @@ names(queryResults) = c("Comp","bp","CC")
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 03		FILTERS AND OUTLIER HANDLING
+#		Script block 6: FILTERS AND OUTLIER HANDLING
 #-----------------------------------------------------------------------------------------------------#
 if(linearAlkanesOnly == 1){
 	queryResults = queryResults[-grep(pattern = "\\(",x = queryResults$CC),]
@@ -142,7 +142,7 @@ if(!length(queryResults$Comp=="phytane")==0){
 
 
 #-----------------------------------------------------------------------------------------------------#
-#		Block 03		DATA VIZ
+#		Script block 7: DATA OVERVIEW
 #-----------------------------------------------------------------------------------------------------#
 # Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
 CClength_crude = nchar(gsub(pattern = "\\)",replacement = "",x = gsub(pattern = "\\(",replacement = "",x = queryResults$CC)))
@@ -156,7 +156,7 @@ plot(plotCClength,plotBP,main = "Carbon - boilingpoint relation",xlab = "Amount 
 hist(queryResults$bp,breaks=20,main = "Boiling point frequency distribution",xlab = "Boiling point (Kelvin)",ylab = "Frequency")
 
 #-----------------------------------------------------------------------------------------------------#
-# 		Block 03		rcdk data extraction see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
+# 		Script block 8: DATA ENRICHMENT see:https://cran.r-project.org/web/packages/rcdk/vignettes/molform.html
 #-----------------------------------------------------------------------------------------------------#
 smilesParser <- get.smiles.parser()
 descCategories <- get.desc.categories()
@@ -206,7 +206,7 @@ dfSmilesDescData = dfSmilesDescData[,-1]
 
 
 #-----------------------------------------------------------------------------------------------------#
-#							Latent variable selection (correlation)
+#		Script block 9: LATENT VARIABLE FILTER
 #-----------------------------------------------------------------------------------------------------#
 # Remove NAs n stuff
 dfSmilesDescData <- dfSmilesDescData[, !apply(dfSmilesDescData, 2, function(x) any(is.na(x)) )]
@@ -259,10 +259,7 @@ dfInputML = dfInputML[order(dfInputML$BoilPoint),]
 
 
 #-----------------------------------------------------------------------------------------------------#
-#							MACHINE LEARNING
-#-----------------------------------------------------------------------------------------------------#
-#-----------------------------------------------------------------------------------------------------#
-# 				Data subsetting; Train; Test
+# 		Script block 10: DATA SUBSETTING FOR MACHINE LEARNING
 #-----------------------------------------------------------------------------------------------------#
 # Define variables 
 sample.length = length(dfInputML[,1])
@@ -301,7 +298,7 @@ yactual.test = data.test$BoilPoint
 
 
 #-----------------------------------------------------------------------------------------------------#
-#							CARET : pls
+#		Script block 11: PLS MODEL
 #-----------------------------------------------------------------------------------------------------#
 # Define training control method; 10 - k - cross validation
 train_control <- trainControl(method="cv", number=10)
@@ -361,7 +358,7 @@ plot(yactual.train, ypredCARET.pls.train,
 	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.train))
 
 #-----------------------------------------------------------------------------------------------------#
-#							CARET : RF
+#		Script block 12: RANDOM FOREST MODEL
 #-----------------------------------------------------------------------------------------------------#
 # Define training control method; 10 - k - cross validation
 train_control <- trainControl(method="cv", number=10)
