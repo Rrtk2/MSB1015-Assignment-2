@@ -19,7 +19,7 @@ This GitHub Page is a final product of assignment 2, requested by the course MSB
  - machine learning using caret (r package)
 
 ## Workflow
-The folowing workflow is applied, coherent to the script blocks:
+The following workflow is applied, coherent to the script blocks:
 
 1) Install packages
 
@@ -48,7 +48,7 @@ The folowing workflow is applied, coherent to the script blocks:
 
 
 #### Script block 1: INSTALL PACKAGES
-This block installs all packages which are required during this algorithm. It iteravely checks if they are installed, installs if needed, and load them afterward. 
+This block installs all packages which are required during this algorithm. It iteratively checks if they are installed, installs if needed, and load them afterward. 
 ```{r message=FALSE}
 	# Install packages if needed and load, or just load packages
 	if (!requireNamespace("BiocManager", quietly = TRUE))
@@ -125,7 +125,7 @@ This block gets the data from WikiData. As stated before, the goal is to extract
 
 
 #### Script block 5: BOILINGPOINT UNIT CONVERSION
-As the query extracts *all* boiling points, sevceral different units might be used for a single alkene. Thus, these need to be checked and converted to Kelvin, as this is a international unit. However, during the development of this script only two other units were found, Celsius and Fahrenheit. This means when another unit is introduced, the algorithm cannot detect it and will use this unit as outlier. To overcome this, after conversion all the samples containing a 'Kelvin' unit will be used, while others are removed from the dataset. Finally, 'dataObj' is subsetted to contain the alkene name, boiling point and concatenated smiles.
+As the query extracts *all* boiling points, several different units might be used for a single alkene. Thus, these need to be checked and converted to Kelvin, as this is a international unit. However, during the development of this script only two other units were found, Celsius and Fahrenheit. This means when another unit is introduced, the algorithm cannot detect it and will use this unit as outlier. To overcome this, after conversion all the samples containing a 'Kelvin' unit will be used, while others are removed from the dataset. Finally, 'dataObj' is subsetted to contain the alkene name, boiling point and concatenated smiles.
  
 ```{r}
 	#C to Kelvin:
@@ -157,7 +157,7 @@ As the query extracts *all* boiling points, sevceral different units might be us
 
 
 #### Script block 6: FILTERS AND OUTLIER HANDLING
-The extracted data can be filtered on linear alkenes only (no branches), this can be changed in settings. It simplifies the model as it does not need to take the branching in account. After evaluation of the data (which happens in block 7) it was observed two alkenes deviated from the observable trend line. This was because one alkene (hexatriacontane) contained boiling point data under pressurised condition, altering the boiling point compared to the rest. The second alkene (Dooctacontane) has a lower boiling point temperature for no clear reason; when looking this up in [ChemSpider](http://www.chemspider.com/Chemical-Structure.455910.html), it is observed the boiling point is	684.9±18.0 °C while WikiData states 608.7 °C. The two alkanes are locally corrected as these need looking in to.
+The extracted data can be filtered on linear alkenes only (no branches), this can be changed in settings. It simplifies the model as it does not need to take the branching in account. After evaluation of the data (which happens in block 7) it was observed two alkenes deviated from the observable trend line. This was because one alkene (hexatriacontane) contained boiling point data under pressurized condition, altering the boiling point compared to the rest. The second alkene (Dooctacontane) has a lower boiling point temperature for no clear reason; when looking this up in [ChemSpider](http://www.chemspider.com/Chemical-Structure.455910.html), it is observed the boiling point is	684.9±18.0 °C while WikiData states 608.7 °C. The two alkanes are locally corrected as these need looking in to.
 ```{r}
 	if(linearAlkanesOnly == 1){
 		queryResults = queryResults[-grep(pattern = "\\(",x = queryResults$CC),]
@@ -180,7 +180,7 @@ The extracted data can be filtered on linear alkenes only (no branches), this ca
 
 
 #### Script block 7: DATA OVERVIEW
-After correction / filtering the data, it is visualized in this block. It indicates a exponentional relationship between boiling point and length of the alkene (based on the carbon atom backbone). This is a indication that a 'simple' model should be able to pick up the variables involved to determine the boiling point. The histogram indicates the boiling point frequency distribution, ideally, this would be normally distributed. It can be observed that it is *not* normally distributedl; and should be taken in account.
+After correction / filtering the data, it is visualized in this block. It indicates an exponential relationship between boiling point and length of the alkene (based on the carbon atom backbone). This is a indication that a 'simple' model should be able to pick up the variables involved to determine the boiling point. The histogram indicates the boiling point frequency distribution, ideally, this would be normally distributed. It can be observed that it is *not* normally distributed; and should be taken in account.
 ```{r}
 	# Get a general idea of how the data looks; disregarding branch effects; amount of C in compound linked to BP
 	CClength_crude = nchar(gsub(pattern = "\\)",replacement = "",x = gsub(pattern = "\\(",replacement = "",x = queryResults$CC)))
@@ -196,7 +196,7 @@ After correction / filtering the data, it is visualized in this block. It indica
 
 
 #### Script block 8: DATA ENRICHMENT
-To build a model, variables are required to reflect the selected molecule. Several aspects can be derived from the concatenated smiles directly, such as the amount of (C)arbon and (H)ydrogen atoms. However, when looking into molecules many more things can be stated, such as electronegativity or 3d-structure. The [RCDK package](https://cran.r-project.org/web/packages/rcdk/index.html) in R uses concatenated smiles to determine several molecular descriptors. This information can be stored in a data frame per alkene molecule, which becomes the input for machine learing. This is possible as the output *y* (boiling point) is extracted from WikiData, and variables *v(1)..v(n)* are the obtained molecular descriptors. This dataframe is called 'descs', containing many variables.
+To build a model, variables are required to reflect the selected molecule. Several aspects can be derived from the concatenated smiles directly, such as the amount of (C)arbon and (H)ydrogen atoms. However, when looking into molecules many more things can be stated, such as electronegativity or 3d-structure. The [RCDK package](https://cran.r-project.org/web/packages/rcdk/index.html) in R uses concatenated smiles to determine several molecular descriptors. This information can be stored in a data frame per alkene molecule, which becomes the input for machine learning. This is possible as the output *y* (boiling point) is extracted from WikiData, and variables *v(1)..v(n)* are the obtained molecular descriptors. This dataframe is called 'descs', containing many variables.
 ```{r}
 	smilesParser <- get.smiles.parser()
 	descCategories <- get.desc.categories()
@@ -247,7 +247,7 @@ To build a model, variables are required to reflect the selected molecule. Sever
 
 
 #### Script block 9: LATENT VARIABLE FILTER
-Because 'descs' contains many variables, the *curse of dimensionality* is a phenomena stating the amount of variables is bigger than the amount of samples, leading to infinite results (cannot predict). To account for this several (crude) steps are taken, first all columns containing NAs are removed. Second, the descriptors are correlated with the boiling point to indicate correlated varibles. At last, the top 15 (abs) correlating variables are selected and kept while all other variables are removed. As there are around 130 samples and 15 variables, a prediction is possible. A dataframe called 'my_data' is created containing: the amount of carbons in the backbone *n*, the 15 top correlated variables *v(1..15)* and the expected output *y*.
+Because 'descs' contains many variables, the *curse of dimensionality* is a phenomena stating the amount of variables is bigger than the amount of samples, leading to infinite results (cannot predict). To account for this several (crude) steps are taken, first all columns containing NAs are removed. Second, the descriptors are correlated with the boiling point to indicate correlated variables. At last, the top 15 (abs) correlating variables are selected and kept while all other variables are removed. As there are around 130 samples and 15 variables, a prediction is possible. A dataframe called 'my_data' is created containing: the amount of carbons in the backbone *n*, the 15 top correlated variables *v(1..15)* and the expected output *y*.
 ```{r}
 	# Remove NAs n stuff
 	dfSmilesDescData <- dfSmilesDescData[, !apply(dfSmilesDescData, 2, function(x) any(is.na(x)) )]
@@ -301,7 +301,7 @@ Because 'descs' contains many variables, the *curse of dimensionality* is a phen
 
 
 #### Script block 10: DATA SUBSETTING FOR MACHINE LEARNING
-To create robust (machine learning) models several aspects need to be accounted for. Overfitting is the proces of fitting the model perfectly to *this* dataset, while another dataset might not fit that well. A balance must be struck between robustness and minimal error. This is why the dataset is split into a training and test set, by evaluating the model performance on both sets, the overfitting and robustness van be evaluated. This block of code splits the data in a test and training set, using a density-biased random sampling approach. As stated before, the samples are not uniformly distributed, thus, a random sampling approach *will* select more samples with higher boiling points, shifing the model focus to higher boiling points rather than uniform. 
+To create robust (machine learning) models several aspects need to be accounted for. Overfitting is the process of fitting the model perfectly to *this* dataset, while another dataset might not fit that well. A balance must be struck between robustness and minimal error. This is why the dataset is split into a training and test set, by evaluating the model performance on both sets, the overfitting and robustness van be evaluated. This block of code splits the data in a test and training set, using a density-biased random sampling approach. As stated before, the samples are not uniformly distributed, thus, a random sampling approach *will* select more samples with higher boiling points, shifting the model focus to higher boiling points rather than uniform. 
 ```{r}
 	# Define variables 
 	sample.length = length(dfInputML[,1])
@@ -341,7 +341,7 @@ To create robust (machine learning) models several aspects need to be accounted 
 
 
 #### Script block 11: PLS MODEL
-A PLS model was created using the [Caret](http://topepo.github.io/caret/index.html) package in R, which is a framework for a variarity of machine learning approaches. (10) k-fold cross validataion was applied to increase the model performance as it estimates the best latent variables which should be used. When evaluating the model's performance, RMSE and MAE is used in addition to a predict vs actual plot. These are calculated for training and test set, to indicate robustness and overfitting.
+A PLS model was created using the [Caret](http://topepo.github.io/caret/index.html) package in R, which is a framework for a variety of machine learning approaches. (10) k-fold cross validation was applied to increase the model performance as it estimates the best latent variables which should be used. When evaluating the model's performance, RMSE and MAE is used in addition to a predict vs actual plot. These are calculated for training and test set, to indicate robustness and overfitting.
 ```{r}
 	# Define training control method; 10 - k - cross validation
 	train_control <- trainControl(method="cv", number=10)
@@ -406,16 +406,16 @@ The 10-fold cross-validated PLS model used 3 latent variables (VAdjMat, Kier1, k
 
 It can be observed the test RMSE is 16.09 and MAE 14.97; training RMSE is 19.94 and MAE 14.84. 
 
-If overfitting did happen, the training error would be significanly lower than the test error, which is not the case. 
+If overfitting did happen, the training error would be significantly lower than the test error, which is not the case. 
 
 However, the training error is higher than the test error, indicating the model fits the test dataset better. This is logical as the training set has many more points than the test set, creating the possibility to gain more error in the training set.
 
 The MAE is very comparable, indicative of no under- or overfitting. 
 
-By examinating the plots and comparing the direction of error, it can be seen as the model balances the prediction; underestimating at first, then overestimating, then underestimating and at last overestimating. This might be induced by nonlinear effects which are not fully captured in the selected variables. 
+By examining the plots and comparing the direction of error, it can be seen as the model balances the prediction; underestimating at first, then overestimating, then underestimating and at last overestimating. This might be induced by nonlinear effects which are not fully captured in the selected variables. 
 
 #### Script block 12: RANDOM FOREST MODEL
-As the caret package includes many different machine learing methods, a random forest model has been included. Random forest has been chosen as this method has been proven powerfull and can capture liner as well as nonliner effects. It can be observed the Random forest model's performance is better than the PLS model. However, both models can be improved by tuning the parameters and obtaining better molecular descriptors.
+As the caret package includes many different machine learning methods, a random forest model has been included. Random forest has been chosen as this method has been proven powerful and can capture linear as well as nonliner effects. It can be observed the Random forest model's performance is better than the PLS model. However, both models can be improved by tuning the parameters and obtaining better molecular descriptors.
 ```{r}
 	# Define training control method; 10 - k - cross validation
 	train_control <- trainControl(method="cv", number=10)
@@ -483,7 +483,7 @@ It can be observed the test RMSE is 8.30 and MAE 5.25; training RMSE is 7.61 and
 
 If overfitting did happen, the training error would be significanly lower than the test error. Comparing the RMSE and MAE indicates slight overfitting.
 
-By examinating the plots and comparing the direction of error, it can be seen this prediction seems spot on with tlight uniform error. Comparing this model to the PLS model a clear difference can be seen, which is likely caused by the nonlinear predictive power of random forest.
+By examinating the plots and comparing the direction of error, it can be seen this prediction seems spot on with slight uniform error. Comparing this model to the PLS model a clear difference can be seen, which is likely caused by the nonlinear predictive power of random forest.
 
 
 

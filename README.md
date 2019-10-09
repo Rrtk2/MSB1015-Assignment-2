@@ -9,20 +9,20 @@ The setup of a [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) need
 
 
 #### Usage
-Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project. To run the code on your local computer, go to the [GitHub raw code page](https://rrtk2.github.io/MSB1015-Assignment-2/raw.html) and insert this code into your local R version. This will install and load the required libraries, do the query, use machine learning and create 2 models which can be used to predict the boiling temperatures. In block 2 (SETTINGS) several parameters can be adjusted, such as the training size or querry call. 
+Visit the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) to see the result of this project. To run the code on your local computer, go to the [GitHub raw code page](https://rrtk2.github.io/MSB1015-Assignment-2/raw.html) and insert this code into your local R version. This will install and load the required libraries, do the query, use machine learning and create 2 models which can be used to predict the boiling temperatures. In block 2 (SETTINGS) several parameters can be adjusted, such as the training size or query call. 
 
 #### Expected output
 Using the default settings the output should be very similar as observed in the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/). Any updates which alters the result of the query will alter the results when the script is re-ran.
 
 #### Project structure
 ##### Where does data come from?
-The query asks information from [Wikidata](http://wikidata.org) in a similar fasion the dedicated [Wikidata database query](https://query.wikidata.org/) works using the SPARQL language. Data on wikidata is published under the [Creative Commons Zero](https://creativecommons.org/share-your-work/public-domain/cc0) licence, stating 'others may freely build upon, enhance and reuse the works for any purposes without restriction under copyright or database law'.
+The query asks information from [Wikidata](http://wikidata.org) in a similar fashion the dedicated [Wikidata database query](https://query.wikidata.org/) works using the SPARQL language. Data on wikidata is published under the [Creative Commons Zero](https://creativecommons.org/share-your-work/public-domain/cc0) license, stating 'others may freely build upon, enhance and reuse the works for any purposes without restriction under copyright or database law'.
 
 ##### How is data shared, in what format, with what protocols?
 Using the tool developed in this project, data is shared using the [wikidata-sdk](https://www.wikidata.org/w/api.php). 
 
 ##### Workflow
-The folowing workflow is applied, coherent to the script blocks:
+The following workflow is applied, coherent to the script blocks:
 
 1) Install packages
 
