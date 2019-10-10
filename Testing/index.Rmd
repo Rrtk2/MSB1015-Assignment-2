@@ -49,7 +49,7 @@ The following workflow is applied, coherent to the script blocks:
 
 #### Script block 1: INSTALL PACKAGES
 This block installs all packages which are required during this algorithm. It iteratively checks if they are installed, installs if needed, and load them afterward. 
-```{r message=FALSE}
+```{r message=FALSE, warning = FALSE}
 	# Install packages if needed and load, or just load packages
 	if (!requireNamespace("BiocManager", quietly = TRUE))
 	  install.packages("BiocManager", ask = F)
@@ -364,12 +364,12 @@ A PLS model was created using the [Caret](http://topepo.github.io/caret/index.ht
 	# Root mean squared error
 	RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
 	RMSE.pls.test
-	# Results in: 10.61
+	# Results in: 16.55
 
 	# Mean absolute error
 	MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
 	MAE.pls.test
-	# Results in: 10.00
+	# Results in: 14.99
 
 	# Plot ypred vs yactual of test data
 	plot(yactual.test, ypredCARET.pls.test,
@@ -385,12 +385,12 @@ A PLS model was created using the [Caret](http://topepo.github.io/caret/index.ht
 	# Root mean squared error
 	RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
 	RMSE.pls.train
-	# Results in: 13.60
+	# Results in: 16.08
 
 	# Mean absolute error
 	MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
 	MAE.pls.train
-	# Results in: 10.26
+	# Results in: 12.61
 
 	# Plot ypred vs yactual of training data
 	plot(yactual.train, ypredCARET.pls.train,
@@ -404,13 +404,13 @@ A PLS model was created using the [Caret](http://topepo.github.io/caret/index.ht
 #### Evaluation of PLS model
 The 10-fold cross-validated PLS model used 3 latent variables (VAdjMat, Kier1, khs.ssCH2) to estimate the boiling point within 16 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be *16 / (1100 - 200) x 100 =* 1.8%.
 
-It can be observed the test RMSE is 16.09 and MAE 14.97; training RMSE is 19.94 and MAE 14.84. 
+It can be observed the test RMSE is 16.55 and MAE 14.99; training RMSE is 16.08 and MAE 12.61. 
 
 If overfitting did happen, the training error would be significantly lower than the test error, which is not the case. 
 
-However, the training error is higher than the test error, indicating the model fits the test dataset better. This is logical as the training set has many more points than the test set, creating the possibility to gain more error in the training set.
+The training error is slightly lower than the test error, indicating the model fits dynamics of the data.
 
-The MAE is very comparable, indicative of no under- or overfitting. 
+The MAE is comparable, indicative of no under- or overfitting. 
 
 By examining the plots and comparing the direction of error, it can be seen as the model balances the prediction; underestimating at first, then overestimating, then underestimating and at last overestimating. This might be induced by nonlinear effects which are not fully captured in the selected variables. 
 
@@ -439,12 +439,12 @@ As the caret package includes many different machine learning methods, a random 
 	# Root mean squared error
 	RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
 	RMSE.rf.test
-	# Results in: 10.61
+	# Results in: 8.92
 
 	# Mean absolute error
 	MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
 	MAE.rf.test
-	# Results in: 10.00
+	# Results in: 5.72
 
 	# Plot ypred vs yactual of test data
 	plot(yactual.test, ypredCARET.rf.test,
@@ -460,12 +460,12 @@ As the caret package includes many different machine learning methods, a random 
 	# Root mean squared error
 	RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
 	RMSE.rf.train
-	# Results in: 13.60
+	# Results in: 3.91
 
 	# Mean absolute error
 	MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
 	MAE.rf.train
-	# Results in: 10.26
+	# Results in: 2.74
 
 	# Plot ypred vs yactual of training data
 	plot(yactual.train, ypredCARET.rf.train,
@@ -477,11 +477,11 @@ As the caret package includes many different machine learning methods, a random 
 ```
 
 #### Evaluation of RandomForest model
-The 10-fold cross-validated RandomForest model used 9 predictors to estimate the boiling point within 8.3 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be *8.3 / (1100 - 200) x 100 =* 0.9%.
+The 10-fold cross-validated RandomForest model used 9 predictors to estimate the boiling point within 8.3 degrees kelvin, ranging between (rounded) 200 to 1100 degrees kelvin. The mean deviation is approximated to be *8 / (1100 - 200) x 100 =* 0.9%.
 
-It can be observed the test RMSE is 8.30 and MAE 5.25; training RMSE is 7.61 and MAE 3.79. 
+It can be observed the test RMSE is 8.92 and MAE 5.72; training RMSE is 3.91 and MAE 2.74. 
 
-If overfitting did happen, the training error would be significanly lower than the test error. Comparing the RMSE and MAE indicates slight overfitting.
+The the training error is lower than the test error, indicative of slight overfitting. However, the test set RMSE is 8.92, which is lower than the PLS model; indicative that this model outperforms the PLS model. Comparing the MAE indicates slight overfitting.
 
 By examinating the plots and comparing the direction of error, it can be seen this prediction seems spot on with slight uniform error. Comparing this model to the PLS model a clear difference can be seen, which is likely caused by the nonlinear predictive power of random forest.
 

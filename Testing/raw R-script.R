@@ -321,17 +321,17 @@ ypredCARET.pls.test <- model %>% predict(data.test)
 # Root mean squared error
 RMSE.pls.test = RMSE(yactual.test, ypredCARET.pls.test)
 RMSE.pls.test
-# Results in: 16.09
+# Results in: 16.55
 
 # Mean absolute error
 MAE.pls.test = MAE(yactual.test, ypredCARET.pls.test)
 MAE.pls.test
-# Results in: 14.97
+# Results in: 14.99
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.pls.test,
-    xlab="Observed BP test set", ylab="Predicted BP test set",
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (PLS model)")
+	xlab="Observed BP test set", ylab="Predicted BP test set",
+	pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (PLS model)")
 	abline(0,1, col='red')
 	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.pls.test))
 	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.pls.test))
@@ -342,12 +342,12 @@ ypredCARET.pls.train <- model %>% predict(data.train)
 # Root mean squared error
 RMSE.pls.train = RMSE(yactual.train, ypredCARET.pls.train)
 RMSE.pls.train
-# Results in: 19.94
+# Results in: 16.08
 
 # Mean absolute error
 MAE.pls.train = MAE(yactual.train, ypredCARET.pls.train)
 MAE.pls.train
-# Results in: 14.84
+# Results in: 12.61
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.pls.train,
@@ -382,17 +382,17 @@ ypredCARET.rf.test <- model %>% predict(data.test)
 # Root mean squared error
 RMSE.rf.test = RMSE(yactual.test, ypredCARET.rf.test)
 RMSE.rf.test
-# Results in: 8.19
+# Results in: 8.92
 
 # Mean absolute error
 MAE.rf.test = MAE(yactual.test, ypredCARET.rf.test)
 MAE.rf.test
-# Results in: 5.35
+# Results in: 5.72
 
 # Plot ypred vs yactual of test data
 plot(yactual.test, ypredCARET.rf.test,
-    xlab="Observed BP test set", ylab="Predicted BP test set",
-    pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (RandomForest model)")
+	xlab="Observed BP test set", ylab="Predicted BP test set",
+	pch=19, xlim=c(0, ceiling(max(yNN)*1.1)), ylim=c(0, ceiling(max(yNN)*1.1)),main="Prediction error test set (RandomForest model)")
 	abline(0,1, col='red')
 	text(200,ceiling(max(yNN)*1.1),paste("RMSE: ",RMSE.rf.test))
 	text(200,ceiling(max(yNN)*1.1)-50,paste("MAE: ",MAE.rf.test))
@@ -403,12 +403,12 @@ ypredCARET.rf.train <- model %>% predict(data.train)
 # Root mean squared error
 RMSE.rf.train = RMSE(yactual.train, ypredCARET.rf.train)
 RMSE.rf.train
-# Results in: 7.65
+# Results in: 3.91
 
 # Mean absolute error
 MAE.rf.train = MAE(yactual.train, ypredCARET.rf.train)
 MAE.rf.train
-# Results in: 3.78
+# Results in: 2.74
 
 # Plot ypred vs yactual of training data
 plot(yactual.train, ypredCARET.rf.train,
