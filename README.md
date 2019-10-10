@@ -1,6 +1,6 @@
 # MSB1015-Assignment-2
 
-[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Wrapping_up-green) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
+[![GitHub License](https://img.shields.io/github/license/Rrtk2/MSB1015-Assignment-2)](https://github.com/Rrtk2/MSB1015-Assignment-2/blob/master/LICENSE.md) ![](https://img.shields.io/badge/Status-Final-brightgreen) [![GitHub Watches](https://img.shields.io/github/watchers/Rrtk2/MSB1015-Assignment-2.svg?style=social&label=Watch&maxAge=2592000)](https://github.com/Rrtk2/MSB1015-Assignment-2/watchers) 
 
 
 #### What is this project about
@@ -64,7 +64,7 @@ RRtK2 (owner and contributor)
 
 
 #### Status of project
-Wrapping up. Minor adjustments to the [GitHub page](https://rrtk2.github.io/MSB1015-Assignment-2/) might occur, as well as to the scripts. Bugfixes.
+Final. No edits expected, possible patches and bugfixes only.
 
 
 #### Copyright and authors
